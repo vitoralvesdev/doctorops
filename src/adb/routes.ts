@@ -7,9 +7,10 @@ import { isIPv4, lookupHost } from "../core/network.js";
 import { CAPTURES_DIR } from "../core/settings.js";
 import { delay } from "../core/time.js";
 import { abortCurrent, endAbortSignal, makeAbortSignal, scanState } from "../discovery/scan.js";
+import { deepProbe, formatProbe } from "../discovery/probe.js";
 import { KIND_LABEL } from "../discovery/types.js";
 import { adbConnect, parseAdbDevices, resolveEndpoint, run, validEndpoint } from "./client.js";
-import { runAgentCommand } from "../agents/native.js";
+import { inspectUsb } from "./usb.js";
 import {
   captureScreen,
   ensureDevice,
@@ -38,23 +39,11 @@ function helpText(): string {
     "  pair <ip:porta> <código>  pareia depuração sem fio (Android 11+)",
     "  connect <ip-ou-nome[:porta]> conecta ADB (porta padrão 5555)",
     "  disconnect <ip-ou-nome[:porta]> desconecta ADB",
+    "  probe <ip> [full]        diagnóstico profundo (portas, banners, UDP, MAC)",
+    "  usb                      aparelhos no USB e o que o sistema enumerou",
+    "  tcpip <serial> [porta]   liga o ADB de rede a partir de um aparelho no USB",
+    "  clear                    limpa a tela do terminal (não apaga o histórico)",
     "  abort                    cancela a operação atual",
-    "",
-    "Agente nativo (box, sem ADB):",
-    "  info                     modelo, Android, permissões e instaladores",
-    "  apps [--system] [--json] lista apps da box (use 'agent apps')",
-    "  launch <pacote>          abre um app na TV",
-    "  open <url>               abre um site na TV",
-    "  install <apk> [--agent|--session]",
-    "                           envia um APK do PC e abre a instalação",
-    "  uninstall <pacote>       pede a desinstalação na TV",
-    "  settings [unknown|security|applications|main]",
-    "  result                   último resultado de instalação",
-    "  agent config <ip[:porta]> <token>",
-    "                           aponta o terminal para a box",
-    "",
-    "Use 'agent <comando>' (ou 'box <comando>') para o agente;",
-    "'apps', 'install' e 'uninstall' sem prefixo continuam sendo ADB.",
     "",
     "No cabo USB, use o serial exibido por `adb devices` no lugar do IP.",
   ].join("\n");
@@ -90,14 +79,8 @@ router.post("/api/command", async (req, res) => {
     return;
   }
 
-  const agentMatch = raw.match(/^(?:agent|box)(?:\s+([\s\S]+))?$/i);
-  if (agentMatch) {
-    res.json(await runAgentCommand(agentMatch[1] ?? "help"));
-    return;
-  }
-
-  if (/^(info|health|result|config|launch|open)(?:\s|$)/i.test(raw)) {
-    res.json(await runAgentCommand(raw));
+  if (/^clear$/i.test(raw)) {
+    res.json({ ok: true, output: "" });
     return;
   }
 
@@ -169,6 +152,110 @@ router.post("/api/command", async (req, res) => {
     }
     const out = await run("adb", ["disconnect", ep], 5000).catch((e) => (e as Error).message);
     res.json({ ok: true, output: out || `${ep} desconectado.` });
+    return;
+  }
+
+  if (/^usb$/i.test(raw)) {
+    try {
+      res.json({ ok: true, output: await inspectUsb() });
+    } catch (e) {
+      res.status(500).json({ ok: false, output: (e as Error).message });
+    }
+    return;
+  }
+
+  const probeMatch = raw.match(/^probe\s+(\S+)(?:\s+(full))?$/i);
+  if (probeMatch) {
+    const target = cleanArg(probeMatch[1]);
+    const full = Boolean(probeMatch[2]);
+    const ip = isIPv4(target) ? target : await lookupHost(target);
+    if (!ip) {
+      res.status(404).json({ ok: false, output: `Não encontrei "${target}" na rede nem no DNS.` });
+      return;
+    }
+    try {
+      res.json({ ok: true, output: formatProbe(await deepProbe(ip, { full })) });
+    } catch (e) {
+      res.status(500).json({ ok: false, output: (e as Error).message });
+    }
+    return;
+  }
+
+  const tcpipMatch = raw.match(/^tcpip\s+(\S+)(?:\s+(\d{1,5}))?$/i);
+  if (tcpipMatch) {
+    const serial = cleanArg(tcpipMatch[1]);
+    const port = tcpipMatch[2] ? Number(tcpipMatch[2]) : 5555;
+    if (port < 1024 || port > 65535) {
+      res.status(400).json({ ok: false, output: "Porta inválida. Use um valor entre 1024 e 65535." });
+      return;
+    }
+    logStep(`tcpip ${serial} ${port}…`);
+    let devices: Map<string, string>;
+    try {
+      devices = parseAdbDevices(await run("adb", ["devices"], 6000));
+    } catch (e) {
+      res.json({ ok: false, output: (e as Error).message });
+      return;
+    }
+    const usbState = devices.get(serial);
+    if (usbState !== "device") {
+      res.json({
+        ok: false,
+        output: [
+          `"${serial}" não está conectado por USB como "device"${usbState ? ` (estado: ${usbState})` : ""}.`,
+          "",
+          "Conecte o cabo OTG, autorize 'Permitir depuração USB' na tela da box e rode novamente:",
+          "  tcpip <serial>",
+          "",
+          "Serials disponíveis:",
+          ...[...devices.entries()].map(([s, st]) => `  ${s} — ${st}`),
+        ].join("\n"),
+      });
+      return;
+    }
+
+    const shell = (args: string[], timeout = 8000) => run("adb", ["-s", serial, "shell", ...args], timeout).catch(() => "");
+    const ipRoute = await shell(["ip", "route"], 8000);
+    let ip = ipRoute.match(/\bsrc\s+(\d{1,3}(?:\.\d{1,3}){3})/)?.[1] ?? null;
+    if (!ip) {
+      const addr = await shell(["ip", "-f", "inet", "addr"], 8000);
+      ip = addr.match(/\binet\s+(\d{1,3}(?:\.\d{1,3}){3})/)?.[1] ?? null;
+    }
+    if (!ip) {
+      const props = await shell(["getprop"], 10000);
+      ip = props.match(/\[dhcp\.(?:wlan0|eth0)\.ipaddress\]:\s*\[([^\]]+)\]/)?.[1] ?? null;
+    }
+
+    const rootId = await shell(["su", "-c", "id"], 6000);
+    const rooted = /\buid=0\b/.test(rootId);
+    let persisted = false;
+    if (rooted) {
+      await shell(["su", "-c", `setprop persist.adb.tcp.port ${port}`], 6000);
+      const check = await shell(["getprop", "persist.adb.tcp.port"], 6000);
+      persisted = check.trim() === String(port);
+    }
+
+    const tcpipOut = await run("adb", ["-s", serial, "tcpip", String(port)], 15000).catch((e) => (e as Error).message);
+    await delay(1600);
+    const netState = ip ? await adbConnect(`${ip}:${port}`) : null;
+
+    const lines = [
+      tcpipOut || `adbd reiniciado em TCP ${port}.`,
+      "",
+      ip ? `IP da box: ${ip}` : "Não consegui descobrir o IP pela shell. Rode `connect <ip>:" + `${port}` + "` depois.",
+      netState
+        ? netState === "device"
+          ? `Conectado: ${ip}:${port}`
+          : `TCP ${port} respondeu em estado "${netState}". Autorize na tela da TV e rode list.`
+        : "Ainda não conectou pela rede.",
+      "",
+      rooted
+        ? persisted
+          ? "Root detectado: persist.adb.tcp.port gravado — sobrevive ao reboot."
+          : "Root detectado, mas a gravação de persist.adb.tcp.port não confirmou; a porta pode voltar após reboot."
+        : "Sem root: a porta TCP vale até o próximo reboot. Para persistir, habilite o root da firmware ou use UART/firmware modificada.",
+    ];
+    res.json({ ok: netState === "device", output: lines.join("\n") });
     return;
   }
 
@@ -386,16 +473,16 @@ router.post("/api/command", async (req, res) => {
       const pairHint = group?.pairingPort
         ? `  Porta de pareamento detectada: ${ip}:${group.pairingPort}`
         : "  A porta de pareamento aparece na tela 'Parear dispositivo' da TV.";
+      const isAndroid = group?.kind === "android" || group?.kind === "android-tv";
       const lines = [
-        `${ip}: ADB não acessível${state ? ` (estado: ${state})` : ""}.`,
-        "",
-        ident ? `Identificação:\n${ident}\n` : "",
+        ...(isAndroid || !group ? [`${ip}: ADB não acessível${state ? ` (estado: ${state})` : ""}.`, ""] : []),
+        ...(ident ? [`Identificação:\n${ident}\n`] : []),
         "Conexões detectadas:",
         conns || "  (nenhuma)",
-        "",
       ];
       if (group?.kind === "apple") {
         lines.push(
+          "",
           "Atenção: este IP foi identificado como Apple (AirPlay/Continuity).",
           "iPhones, Macs e Apple TVs não expõem ADB.",
           "Se você esperava o TV Box aqui, este IP não é o dele.",
@@ -404,6 +491,11 @@ router.post("/api/command", async (req, res) => {
         res.json({ ok: false, output: lines.join("\n") });
         return;
       }
+      if (group && !isAndroid) {
+        res.json({ ok: false, output: lines.join("\n") });
+        return;
+      }
+      lines.push("");
       lines.push(
         "Para habilitar ADB:",
         "  Android 11+ (Depuração sem fio):",
@@ -418,8 +510,9 @@ router.post("/api/command", async (req, res) => {
         "    2. connect <ip>:5555",
         "    3. Aceite 'Permitir depuração USB' na tela da TV",
         "",
-        "Se a box não tiver opção de depuração, a firmware bloqueia o ADB;",
-        "será necessário menu de engenharia/vendor (engenharia reversa).",
+        "Se a box não tiver opção de depuração, a firmware bloqueia o ADB.",
+        `Rode \`probe ${ip}\` para ver portas/serviços e o fabricante do módulo Wi-Fi.`,
+        "Com o cabo OTG uma única vez, `tcpip <serial>` liga o ADB de rede.",
       );
       res.json({ ok: false, output: lines.join("\n") });
       return;

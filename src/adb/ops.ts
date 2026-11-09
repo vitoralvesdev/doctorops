@@ -104,8 +104,6 @@ export async function ensureDevice(target: string): Promise<ResolveResult> {
       "Esses comandos precisam de ADB habilitado no aparelho:",
       "  Android 11+: Opções do desenvolvedor > Depuração sem fio > pair/connect",
       "  Android 10 ou menor: Depuração USB/ADB pela rede > connect <ip>:5555",
-      "",
-      "A página /agent não substitui o ADB para instalar/remover apps.",
     ].join("\n"),
   };
 }

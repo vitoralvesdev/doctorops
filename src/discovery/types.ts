@@ -1,7 +1,7 @@
 /* ─── tipos ───────────────────────────────────────────────────────── */
 
 export type DeviceKind = "android-tv" | "android" | "apple" | "router" | "unknown";
-export type Hint = "android-tv" | "android" | "apple" | "router" | "airplay";
+export type Hint = "android-tv" | "android" | "apple" | "router" | "airplay" | "linux-workstation";
 
 export type Connection = { protocol: string; port?: number; state: string; detail?: string };
 
@@ -9,6 +9,7 @@ export type DeviceGroup = {
   ip: string;
   name: string;
   kind: DeviceKind;
+  deviceType?: string;
   model?: string;
   vendor?: string;
   mac?: string;

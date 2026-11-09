@@ -52,6 +52,12 @@
     outputEl.scrollTop = outputEl.scrollHeight;
   }
 
+  function commandOutputClass(data) {
+    if (data.ok) return "success";
+    const output = typeof data.output === "string" ? data.output.trimStart() : "";
+    return /^(?:Comandos:|uso:)/i.test(output) ? "warn" : "error";
+  }
+
   function setExecLoading(on) {
     cmdRunning = on;
     execBtn.disabled = on;
@@ -83,7 +89,6 @@
     "android-tv": { label: "Android TV", icon: "▣", cls: "kind-android" },
     android: { label: "Android", icon: "▣", cls: "kind-android" },
     apple: { label: "Apple", icon: "◎", cls: "kind-apple" },
-    router: { label: "Roteador", icon: "⌂", cls: "kind-router" },
     unknown: { label: "Desconhecido", icon: "◈", cls: "kind-unknown" },
   };
 
@@ -103,6 +108,34 @@
     return b;
   }
 
+  function isPrivateMac(mac) {
+    const firstOctet = Number.parseInt(mac.replace(/[:-]/g, "").slice(0, 2), 16);
+    return Number.isFinite(firstOctet) && (firstOctet & 2) !== 0;
+  }
+
+  function deviceContext(device) {
+    const identity = `${device.deviceType || ""} ${device.name || ""} ${device.model || ""}`.toLowerCase();
+    if (
+      device.kind === "android-tv" ||
+      /\b(android tv|tv box|fire tv|chromecast|google tv|apple tv|bravia|smart tv)\b/.test(identity)
+    ) return "tv";
+    if (
+      device.kind === "android" ||
+      /\b(iphone|ipad|samsung android|motorola android|xiaomi android|google android|celular|smartphone)\b/.test(identity)
+    ) return "mobile";
+    if (
+      /\b(mac|macbook|mac mini|mac studio|mac pro|imac|notebook|laptop|computador linux|desktop|workstation|thinkpad)\b/.test(identity)
+    ) return "computer";
+    return "other";
+  }
+
+  const DEVICE_CONTEXTS = [
+    { key: "tv", label: "TVs e TV Boxes" },
+    { key: "mobile", label: "Celulares e tablets" },
+    { key: "computer", label: "Computadores" },
+    { key: "other", label: "Outros dispositivos" },
+  ];
+
   function render() {
     countEl.textContent = groups.length;
     if (!groups.length) {
@@ -111,75 +144,106 @@
       return;
     }
     devicesEl.replaceChildren();
-    for (const g of groups) {
-      const meta = KIND_META[g.kind] || KIND_META.unknown;
-      const card = document.createElement("div");
-      card.className = "device";
-      if (g.evidence?.length) card.title = g.evidence.join("\n");
+    for (const context of DEVICE_CONTEXTS) {
+      const contextGroups = groups.filter((g) => deviceContext(g) === context.key);
+      if (!contextGroups.length) continue;
 
-      const ico = document.createElement("div");
-      ico.className = "device-icon " + meta.cls + (g.adbState === "device" ? " adb-ok" : "");
-      ico.textContent = meta.icon;
+      const section = document.createElement("section");
+      section.className = "device-context";
+      const heading = document.createElement("div");
+      heading.className = "device-context-heading";
+      const title = document.createElement("h3");
+      title.textContent = context.label;
+      const total = document.createElement("span");
+      total.textContent = `${contextGroups.length} dispositivo${contextGroups.length === 1 ? "" : "s"}`;
+      heading.append(title, total);
+      section.append(heading);
 
-      const main = document.createElement("div");
-      main.className = "device-main";
+      for (const g of contextGroups) {
+        const meta = KIND_META[g.kind] || KIND_META.unknown;
+        const card = document.createElement("div");
+        card.className = "device";
+        if (g.evidence?.length) card.title = g.evidence.join("\n");
 
-      const nameRow = document.createElement("div");
-      nameRow.className = "device-name-row";
-      const name = document.createElement("span");
-      name.className = "device-name";
-      name.textContent = g.name && g.name !== g.ip ? g.name : g.ip;
-      const chip = document.createElement("span");
-      chip.className = "kind-chip " + meta.cls;
-      chip.textContent = meta.label;
-      nameRow.append(name, chip);
-      if (g.agent) {
-        const agentChip = document.createElement("span");
-        agentChip.className = "kind-chip " + (g.agent.online ? "kind-agent-on" : "kind-agent-off");
-        agentChip.textContent = g.agent.online ? "agente online" : "agente offline";
-        nameRow.append(agentChip);
+        const ico = document.createElement("div");
+        ico.className = "device-icon " + meta.cls + (g.adbState === "device" ? " adb-ok" : "");
+        ico.textContent = meta.icon;
+
+        const main = document.createElement("div");
+        main.className = "device-main";
+
+        const nameRow = document.createElement("div");
+        nameRow.className = "device-name-row";
+        const name = document.createElement("span");
+        name.className = "device-name";
+        name.textContent = g.name && g.name !== g.ip ? g.name : g.deviceType || g.ip;
+        const chip = document.createElement("span");
+        chip.className = "kind-chip " + meta.cls;
+        chip.textContent = g.deviceType || meta.label;
+        nameRow.append(name, chip);
+
+        const ipRow = document.createElement("div");
+        ipRow.className = "meta";
+        ipRow.textContent = g.ip + (g.vendor ? `  ·  ${g.vendor}` : "");
+
+        main.append(nameRow, ipRow);
+
+        if (g.kind === "unknown" && g.name === g.ip) {
+          if (g.mac) {
+            const macRow = document.createElement("div");
+            macRow.className = "meta";
+            macRow.textContent = `MAC: ${g.mac}${isPrivateMac(g.mac) ? " (privativa/aleatória; sem fabricante identificável)" : ""}`;
+            main.append(macRow);
+          }
+          if (g.evidence?.length) {
+            const evidenceRow = document.createElement("div");
+            evidenceRow.className = "meta";
+            evidenceRow.textContent = `Pistas: ${g.evidence.join(" · ")}`;
+            main.append(evidenceRow);
+          } else {
+            const nameHint = document.createElement("div");
+            nameHint.className = "meta";
+            nameHint.textContent = "Nome não anunciado pelos serviços de rede";
+            main.append(nameHint);
+          }
+        }
+
+        if (g.model) {
+          const modelRow = document.createElement("div");
+          modelRow.className = "meta";
+          modelRow.textContent = g.model;
+          main.append(modelRow);
+        }
+
+        const badges = document.createElement("div");
+        badges.className = "conn-badges";
+        for (const conn of g.connections) badges.append(makeBadge(conn));
+        if (badges.childElementCount) main.append(badges);
+
+        if (g.adbState) {
+          const adb = document.createElement("div");
+          adb.className = "adb-line adb-" + g.adbState;
+          adb.textContent = ADB_STATE_LABEL[g.adbState] || `ADB: ${g.adbState}`;
+          main.append(adb);
+        }
+
+        if (g.pairingPort && g.adbState !== "device") {
+          const pair = document.createElement("div");
+          pair.className = "adb-line adb-pairing";
+          pair.textContent = `Pareamento disponível em ${g.ip}:${g.pairingPort}`;
+          main.append(pair);
+        }
+
+        card.append(ico, main);
+        card.onclick = () => {
+          if (g.adbState === "pairing" && g.pairingPort) input.value = `pair ${g.ip}:${g.pairingPort} `;
+          else input.value = `list ${g.ip}`;
+          if (opsTarget) opsTarget.value = g.ip;
+          input.focus();
+        };
+        section.append(card);
       }
-
-      const ipRow = document.createElement("div");
-      ipRow.className = "meta";
-      ipRow.textContent = g.ip + (g.vendor ? `  ·  ${g.vendor}` : "");
-
-      main.append(nameRow, ipRow);
-
-      if (g.model) {
-        const modelRow = document.createElement("div");
-        modelRow.className = "meta";
-        modelRow.textContent = g.model;
-        main.append(modelRow);
-      }
-
-      const badges = document.createElement("div");
-      badges.className = "conn-badges";
-      for (const conn of g.connections) badges.append(makeBadge(conn));
-      if (badges.childElementCount) main.append(badges);
-
-      if (g.adbState) {
-        const adb = document.createElement("div");
-        adb.className = "adb-line adb-" + g.adbState;
-        adb.textContent = ADB_STATE_LABEL[g.adbState] || `ADB: ${g.adbState}`;
-        main.append(adb);
-      }
-
-      if (g.pairingPort && g.adbState !== "device") {
-        const pair = document.createElement("div");
-        pair.className = "adb-line adb-pairing";
-        pair.textContent = `Pareamento disponível em ${g.ip}:${g.pairingPort}`;
-        main.append(pair);
-      }
-
-      card.append(ico, main);
-      card.onclick = () => {
-        if (g.adbState === "pairing" && g.pairingPort) input.value = `pair ${g.ip}:${g.pairingPort} `;
-        else input.value = `list ${g.ip}`;
-        if (opsTarget) opsTarget.value = g.ip;
-        input.focus();
-      };
-      devicesEl.append(card);
+      devicesEl.append(section);
     }
   }
 
@@ -266,6 +330,13 @@
     historyIndex = commandHistory.length;
     historyDraft = "";
 
+    if (/^clear$/i.test(command)) {
+      outputEl.replaceChildren();
+      input.value = "";
+      input.focus();
+      return;
+    }
+
     if (/^abort$/i.test(command)) {
       terminal("> abort");
       input.value = "";
@@ -294,7 +365,7 @@
         body: JSON.stringify({ command }),
       });
       const data = await r.json();
-      terminal(data.output || "Sem saída", data.ok ? "success" : "error");
+      terminal(data.output || "Sem saída", commandOutputClass(data));
     } catch (err) {
       terminal(err.message, "error");
     } finally {

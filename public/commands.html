@@ -67,64 +67,10 @@
 <body>
 <main class="cmd-page">
 
-  <a href="/" class="cmd-back">← Voltar</a>
+  <a href="/discovery" class="cmd-back">← Voltar</a>
 
   <h1 class="cmd-title">Lista de <b>Comandos</b></h1>
-  <p class="cmd-subtitle">O agente é o caminho principal. O terminal da página <a href="/discovery">Descoberta</a> aceita comandos ADB e do agente na mesma linha.</p>
-
-  <!-- ── Agentes ── -->
-  <div class="cmd-section">
-    <h2>Agentes (principal)</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Ação</th>
-          <th>Descrição</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">info</span><br>
-            <span class="cmd-example">botão "Pedir info"</span>
-          </td>
-          <td class="td-desc">
-            A box responde no próximo heartbeat com modelo, Android, tela, idioma e User-Agent.
-            Não usa ADB: a própria página <code>/agent</code> envia os dados.
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">env</span><br>
-            <span class="cmd-example">botão "Ambiente"</span>
-          </td>
-          <td class="td-desc">
-            Devolve platform, UA-CH, núcleos, memória, WebGL e rede do navegador da box —
-            útil para saber se o aparelho é Android ou um navegador Linux.
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">open <span class="arg">&lt;url-http(s)&gt;</span></span><br>
-            <span class="cmd-example">botão "Abrir site"</span>
-          </td>
-          <td class="td-desc">Abre uma URL no navegador da box. Útil para testes e atalhos.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">remover agente</span><br>
-            <span class="cmd-example">botão "Remover"</span>
-          </td>
-          <td class="td-desc">Tira a box da lista. Se a página do agente continuar aberta, ela se registra de novo.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <p class="cmd-subtitle">A descoberta é o modo oficial. O terminal da página <a href="/discovery">Descoberta</a> executa os comandos ADB listados abaixo.</p>
 
   <!-- ── Comandos de dispositivo ── -->
   <div class="cmd-section">
@@ -146,7 +92,7 @@
           <td class="td-desc">
             Identifica o aparelho e, se o ADB estiver acessível, exibe um painel completo com:
             <ul>
-              <li>Tipo detectado (Android TV, Apple, roteador) e modelo/fabricante</li>
+              <li>Tipo detectado (Android TV, TV Box, Android, Apple) e modelo/fabricante</li>
               <li>Identificação: fabricante, marca, modelo, CPU, Android, SDK, Build ID</li>
               <li>Memória RAM: total, em uso (com barra de progresso), disponível</li>
               <li>Armazenamento <code>/data</code>: total, usado, livre</li>
@@ -160,106 +106,58 @@
         </tr>
         <tr>
           <td class="td-cmd">
+            <span class="cmd-syntax">probe <span class="arg">&lt;ip&gt;</span> <span class="arg">[full]</span></span><br>
+            <span class="cmd-example">probe 192.168.1.26</span>
+          </td>
+          <td class="td-desc">
+            Diagnóstico profundo de um IP: portas TCP, banners HTTP/RTSP, SSDP/mDNS/NetBIOS,
+            TTL, MAC e fabricante do módulo Wi-Fi (OUI local). Com <code>full</code>, varre 1–65535.
+            Grava fabricante e portas no cache de hosts. Útil para boxes que aparecem como desconhecidas.
+          </td>
+          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
+        </tr>
+        <tr>
+          <td class="td-cmd">
+            <span class="cmd-syntax">usb</span><br>
+            <span class="cmd-example">usb</span>
+          </td>
+          <td class="td-desc">
+            Mostra o que o <code>adb</code> lista e o que o Windows enumerou no USB
+            (VID/PID, classe e nome), com a diferença em relação à consulta anterior.
+            Rode sem o cabo, conecte o cabo e rode de novo: se nada novo aparecer,
+            o cabo é só de carga ou a porta não faz conexão de dados.
+          </td>
+          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
+        </tr>
+        <tr>
+          <td class="td-cmd">
+            <span class="cmd-syntax">tcpip <span class="arg">&lt;serial-usb&gt;</span> <span class="arg">[porta]</span></span><br>
+            <span class="cmd-example">tcpip 0123456789ABCDEF</span>
+          </td>
+          <td class="td-desc">
+            Converte um aparelho conectado por USB em ADB de rede (<code>adb tcpip</code>).
+            Descobre o IP pela shell, tenta persistir <code>persist.adb.tcp.port</code> quando há root
+            e conecta em seguida. Necessário apenas uma vez; depois use <code>connect &lt;ip&gt;</code>.
+          </td>
+          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
+        </tr>
+        <tr>
+          <td class="td-cmd">
+            <span class="cmd-syntax">clear</span><br>
+            <span class="cmd-example">clear</span>
+          </td>
+          <td class="td-desc">
+            Limpa apenas o que está na tela do terminal. O histórico de comandos e os
+            registros salvos continuam intactos.
+          </td>
+          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
+        </tr>
+        <tr>
+          <td class="td-cmd">
             <span class="cmd-syntax">help</span><br>
             <span class="cmd-example">help</span>
           </td>
           <td class="td-desc">Lista os comandos aceitos pelo terminal.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- ── Agente nativo no terminal ── -->
-  <div class="cmd-section">
-    <h2>Agente nativo (terminal, sem ADB)</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Sintaxe</th>
-          <th>Descrição</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">agent config <span class="arg">&lt;ip[:porta]&gt;</span> <span class="arg">&lt;token&gt;</span></span><br>
-            <span class="cmd-example">agent config 192.168.1.12:8790 e80c5a34</span>
-          </td>
-          <td class="td-desc">
-            Aponta o terminal para o agente nativo da box (porta 8790) e guarda o token em <code>box.json</code>.
-            O token aparece na tela do app <b>HIGHSKY Agent</b> na TV (junto do IP). Sem ele, o APK responde 401.
-            Com a porta 3000, o terminal usa o agente de página (info, env, open).
-            O mesmo comando existe no CLI: <code>node tools/box.mjs config ...</code>.
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">agent info</span><br>
-            <span class="cmd-example">também aceita: info</span>
-          </td>
-          <td class="td-desc">Modelo, Android, tela, uptime, <code>canInstall</code>, telas de Settings e instaladores de APK disponíveis.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">agent apps [--system] [--json]</span><br>
-            <span class="cmd-example">agent apps --system</span>
-          </td>
-          <td class="td-desc">Lista apps da box. Sem prefixo, <code>apps &lt;alvo&gt;</code> continua sendo o comando ADB.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">agent launch <span class="arg">&lt;pacote&gt;</span></span><br>
-            <span class="cmd-example">agent launch com.google.android.youtube.tv</span>
-          </td>
-          <td class="td-desc">Abre um app na TV sem ADB.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">agent open <span class="arg">&lt;url&gt;</span></span><br>
-            <span class="cmd-example">agent open http://192.168.1.6:3000/apk</span>
-          </td>
-          <td class="td-desc">Abre um site no navegador da TV.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">agent install <span class="arg">&lt;arquivo.apk&gt;</span> [--agent|--session]</span><br>
-            <span class="cmd-example">agent install apk/test/hello.apk</span>
-          </td>
-          <td class="td-desc">
-            Serve o APK do PC, abre no navegador da TV e aguarda a confirmação de instalação.
-            <code>--agent</code> usa o instalador acionado pelo agente; <code>--session</code> usa o PackageInstaller.
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">agent uninstall <span class="arg">&lt;pacote&gt;</span></span><br>
-            <span class="cmd-example">agent uninstall com.exemplo.app</span>
-          </td>
-          <td class="td-desc">Pede a desinstalação; a TV mostra a confirmação.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">agent settings [unknown|security|applications|main]</span><br>
-            <span class="cmd-example">agent settings unknown</span>
-          </td>
-          <td class="td-desc">Abre a tela de configurações correspondente na TV.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">agent result</span><br>
-            <span class="cmd-example">também aceita: result</span>
-          </td>
-          <td class="td-desc">Último resultado de instalação/desinstalação registrado pelo agente.</td>
           <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
         </tr>
       </tbody>
@@ -417,17 +315,15 @@
   </div>
 
   <div class="note">
-    <b>Como os comandos funcionam:</b> os comandos de agente são enfileirados no servidor e entregues
-    à box no heartbeat seguinte (box → PC, sem portas abertas). Os comandos marcados como ADB
-    (<code>apps</code>, <code>install</code>, <code>uninstall</code>, <code>screen</code>,
-    <code>push</code>, <code>reboot</code>) rodam no servidor Node.js local via <code>adb</code> e só
-    funcionam se a box expuser a depuração e autorizar a conexão. O navegador da página
-    <code>/agent</code> não tem permissão para instalar ou remover apps — para isso é necessário ADB.
-    O terminal não é um shell livre — apenas os comandos listados aqui são aceitos.
-    Em aparelhos ligados por cabo USB, use o serial exibido por <code>adb devices</code>
-    como alvo (ex.: <code>apps RQ8R205WKDW</code>).
+    <b>Como os comandos funcionam:</b> os comandos (<code>list</code>, <code>apps</code>,
+    <code>install</code>, <code>uninstall</code>, <code>screen</code>, <code>push</code>,
+    <code>reboot</code>) rodam no servidor Node.js local via <code>adb</code> e só funcionam se a
+    box expuser a depuração e autorizar a conexão. O terminal não é um shell livre — apenas os
+    comandos listados aqui são aceitos. Em aparelhos ligados por cabo USB, use o serial exibido por
+    <code>adb devices</code> como alvo (ex.: <code>apps RQ8R205WKDW</code>).
     Para o ADB funcionar em Android 11+ é necessário <code>pair</code> com o código exibido na TV;
     em Android 10 ou menor, basta <code>connect ip:5555</code> e aceitar o aviso na tela.
+    O <b>Agent com IA</b> é um roadmap: interação em linguagem natural ainda não está disponível.
   </div>
 
 </main>

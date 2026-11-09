@@ -71,7 +71,7 @@
     <div class="hosts-head">
       <div>
         <h2>Dispositivos em cache <span id="hosts-badge" class="badge-known">0</span></h2>
-        <p style="font-size:11px;color:var(--muted);margin:3px 0 0">Hosts que já responderam e agentes conectados — testados primeiro em cada varredura.</p>
+        <p style="font-size:11px;color:var(--muted);margin:3px 0 0">Hosts que já responderam — testados primeiro em cada varredura.</p>
       </div>
       <button class="btn-reset" id="clear-hosts">Limpar cache</button>
     </div>
@@ -248,20 +248,14 @@ async function loadConfig() {
 }
 
 async function loadHosts() {
-  const [r, ra, rd] = await Promise.all([
+  const [r, rd] = await Promise.all([
     fetch("/api/hosts"),
-    fetch("/api/agents").catch(() => null),
     fetch("/api/devices").catch(() => null),
   ]);
   const data = await r.json();
-  const entries = Object.values(data);
-  const agentList = ra && ra.ok ? ((await ra.json()).agents || []) : [];
+  const entries = Object.values(data).filter((h) => h.kind !== "router");
   const devGroups = rd && rd.ok ? ((await rd.json()).groups || []) : [];
   const known = new Set(entries.map((h) => h.ip));
-  for (const a of agentList) {
-    if (known.has(a.ip)) continue;
-    entries.push({ ip: a.ip, ports: [], lastSeen: a.lastSeen, name: a.model || a.name, agent: a });
-  }
   for (const g of devGroups) {
     if (known.has(g.ip) || !g.adbEndpoint) continue;
     entries.push({
@@ -277,11 +271,10 @@ async function loadHosts() {
     devGroups.filter((g) => g.adbEndpoint).map((g) => [g.ip, { endpoint: g.adbEndpoint, state: g.adbState }]),
   );
   for (const h of entries) if (!h.adb && adbByIp.has(h.ip)) h.adb = adbByIp.get(h.ip);
-  const agentByIp = new Map(agentList.map((a) => [a.ip, a]));
 
   document.querySelector("#hosts-badge").textContent = entries.length;
   const list = document.querySelector("#hosts-list");
-  if (!entries.length) { list.innerHTML = '<div class="hosts-empty">Nenhum host conhecido ainda. Execute <code>list &lt;ip&gt;</code> ou abra <code>/agent</code> na box.</div>'; return; }
+  if (!entries.length) { list.innerHTML = '<div class="hosts-empty">Nenhum host conhecido ainda. Execute <code>list &lt;ip&gt;</code> no terminal da descoberta.</div>'; return; }
   list.innerHTML = "";
   for (const h of entries.sort((a, b) => a.ip.localeCompare(b.ip))) {
     const row = document.createElement("div");
@@ -296,6 +289,12 @@ async function loadHosts() {
       nm.textContent = " " + h.name;
       ip.append(nm);
     }
+    if (h.vendor) {
+      const vd = document.createElement("span");
+      vd.style.color = "var(--muted)";
+      vd.textContent = " · " + h.vendor;
+      ip.append(vd);
+    }
 
     const ports = document.createElement("span");
     ports.className = "host-ports";
@@ -306,7 +305,7 @@ async function loadHosts() {
     seen.textContent = new Date(h.lastSeen).toLocaleString("pt-BR");
 
     row.append(ip);
-    const kindLabel = { "android-tv": "Android TV", android: "Android", apple: "Apple", router: "Roteador" }[h.kind];
+    const kindLabel = { "android-tv": "Android TV", android: "Android", apple: "Apple" }[h.kind];
     if (kindLabel) {
       const kind = document.createElement("span");
       kind.className = "host-kind";
@@ -318,14 +317,6 @@ async function loadHosts() {
       tag.className = "host-kind";
       tag.textContent = h.adb.state === "device" ? "ADB conectado" : `ADB ${h.adb.state || "?"}`;
       tag.style.color = h.adb.state === "device" ? "var(--green)" : "var(--muted)";
-      row.append(tag);
-    }
-    const agent = agentByIp.get(h.ip);
-    if (agent) {
-      const tag = document.createElement("span");
-      tag.className = "host-kind";
-      tag.textContent = agent.online ? "Agente online" : "Agente offline";
-      tag.style.color = agent.online ? "var(--green)" : "var(--muted)";
       row.append(tag);
     }
     row.append(ports, seen);

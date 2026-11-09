@@ -1,4 +1,3 @@
-import { AGENT_ONLINE_MS } from "./agents/registry.js";
 import { VERSION } from "./core/settings.js";
 
 export type Capability = {
@@ -11,7 +10,7 @@ export type Capability = {
 };
 
 export type CapabilityArea = {
-  id: "agents" | "discovery" | "adb" | "system";
+  id: "discovery" | "adb" | "system" | "ai";
   title: string;
   summary: string;
   primary?: boolean;
@@ -21,71 +20,11 @@ export type CapabilityArea = {
 export function getCapabilities() {
   const areas: CapabilityArea[] = [
     {
-      id: "agents",
-      title: "Agentes (principal)",
-      summary:
-        "A box abre a página /agent, conecta de dentro para fora e passa a aparecer no painel. Não exige ADB, root ou portas abertas na box.",
-      primary: true,
-      capabilities: [
-        {
-          id: "connect-agent",
-          title: "Conectar uma box pela rede",
-          description:
-            "Abra a URL do agente no navegador da box, informe o token e mantenha a página aberta. O vínculo é box → PC.",
-          entry: "/agent",
-          endpoints: ["POST /api/agent/register", "POST /api/agent/heartbeat"],
-        },
-        {
-          id: "list-agents",
-          title: "Ver conexões ativas",
-          description: `Lista todas as boxes conectadas, com status online/offline (janela de ${Math.round(
-            AGENT_ONLINE_MS / 1000,
-          )}s), IP, modelo, Android, tela, idioma e último resultado.`,
-          entry: "/",
-          endpoints: ["GET /api/agents"],
-        },
-        {
-          id: "agent-info",
-          title: "Pedir identificação do aparelho",
-          description: "Enfileira o comando info; a box responde no próximo heartbeat com modelo, Android, tela, idioma e User-Agent.",
-          commands: ["info"],
-          endpoints: ["POST /api/agents/:id/command", "POST /api/agent/result"],
-        },
-        {
-          id: "agent-env",
-          title: "Ler ambiente do navegador",
-          description:
-            "Pede platform, UA-CH, núcleos, memória, WebGL e rede para diagnosticar se a box é Android de verdade.",
-          commands: ["env"],
-          endpoints: ["POST /api/agents/:id/command"],
-        },
-        {
-          id: "agent-open-url",
-          title: "Abrir um site na box",
-          description: "Abre uma URL http(s) no navegador da box, útil para testes e atalhos.",
-          commands: ["open https://exemplo.com"],
-          endpoints: ["POST /api/agents/:id/command"],
-        },
-        {
-          id: "agent-remove",
-          title: "Remover uma box da lista",
-          description: "Remove o registro do agente. Se a página continuar aberta, ele volta a se registrar no próximo heartbeat.",
-          endpoints: ["DELETE /api/agents/:id"],
-        },
-        {
-          id: "agent-token",
-          title: "Autenticar agentes por token",
-          description:
-            "O token fica em agent-token.txt e autentica apenas os endpoints de agente. O restante da API continua restrito ao localhost.",
-          commands: ["x-agent-token: <token>"],
-        },
-      ],
-    },
-    {
       id: "discovery",
-      title: "Descoberta na rede",
+      title: "Descoberta na rede (principal)",
       summary:
-        "Ferramentas auxiliares para localizar e identificar aparelhos. Não são necessárias para o modo agente.",
+        "Modo oficial de conexão: localiza aparelhos na LAN, identifica o tipo e alimenta o terminal e as operações de manutenção.",
+      primary: true,
       capabilities: [
         {
           id: "scan",
@@ -99,7 +38,7 @@ export function getCapabilities() {
           id: "identify",
           title: "Identificar tipo e modelo",
           description:
-            "Classifica Android TV/Cast, Apple, roteador ou desconhecido e enriquece com AirPlay /info, Google Cast e descrição UPnP.",
+            "Classifica Android TV, TV Box, Android, Apple ou desconhecido e enriquece com AirPlay /info, Google Cast e descrição UPnP.",
         },
         {
           id: "wake",
@@ -116,9 +55,9 @@ export function getCapabilities() {
     },
     {
       id: "adb",
-      title: "ADB (opcional)",
+      title: "ADB",
       summary:
-        "Só funciona se a box expuser ADB e autorizar a conexão. Não é necessário para listar agentes.",
+        "Funciona quando a box expõe a depuração e autoriza a conexão. É o canal usado para as operações de manutenção.",
       capabilities: [
         {
           id: "adb-list",
@@ -205,7 +144,7 @@ export function getCapabilities() {
         {
           id: "logs",
           title: "Logs em tempo real",
-          description: "Atividade do servidor via Server-Sent Events, exibida no painel.",
+          description: "Atividade do servidor via Server-Sent Events, exibida no painel de descoberta.",
           endpoints: ["GET /api/logs"],
         },
         {
@@ -219,12 +158,26 @@ export function getCapabilities() {
           id: "capabilities",
           title: "Mapa de capacidades",
           description: "Esta lista, também disponível em JSON.",
-          entry: "/",
+          entry: "/commands.html",
           endpoints: ["GET /api/capabilities"],
+        },
+      ],
+    },
+    {
+      id: "ai",
+      title: "Agent com IA (planejado)",
+      summary:
+        "Evolução do projeto: permitir interação em linguagem natural com o aparelho, com interpretação de contexto e execução de operações compatíveis com as permissões disponíveis.",
+      capabilities: [
+        {
+          id: "ai-natural",
+          title: "Comandos em linguagem natural",
+          description:
+            "Planejado — ainda não implementado. A base atual do projeto é descoberta de dispositivos + operações ADB.",
         },
       ],
     },
   ];
 
-  return { version: VERSION, agentOnlineMs: AGENT_ONLINE_MS, areas };
+  return { version: VERSION, areas };
 }

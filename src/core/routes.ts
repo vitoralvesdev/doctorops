@@ -6,7 +6,7 @@ import { clearHosts, knownHosts } from "./host-cache.js";
 import { logInfo, recentLogs, subscribeLogs } from "./log.js";
 import { lanIPv4 } from "./network.js";
 import { isLocalRequest } from "./security.js";
-import { AGENT_TOKEN, PORT, VERSION } from "./settings.js";
+import { PORT, VERSION } from "./settings.js";
 
 export const systemRouter = Router();
 
@@ -28,7 +28,6 @@ systemRouter.get("/api/capabilities", (req, res) => {
       version: VERSION,
       port: PORT,
       lanAddress: lanIPv4(),
-      token: local ? AGENT_TOKEN : undefined,
       localOnly: !local,
     },
   });

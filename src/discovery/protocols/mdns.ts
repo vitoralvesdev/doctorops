@@ -130,6 +130,7 @@ export async function discoverMDNS(iface: Iface, timeoutMs = 4200): Promise<Mdns
     "_adb-tls-pairing._tcp.local",
     "_companion-link._tcp.local",
     "_remotepairing._tcp.local",
+    "_workstation._tcp.local",
   ];
   const hits = new Map<string, MdnsService>();
 

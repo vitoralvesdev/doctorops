@@ -13,7 +13,7 @@ import {
   sweepIPs,
 } from "../core/network.js";
 import { DeviceMap, finalKind, processMdns, processSsdp, toPublic } from "./identify.js";
-import { isAndroidModel, isAppleModel } from "./models.js";
+import { isAndroidModel, isAppleModel, isVirtualInfrastructure } from "./models.js";
 import { hintsForPort, PORT_LABELS, PROBE_PORTS } from "./ports.js";
 import { airPlayInfo } from "./protocols/airplay.js";
 import { castInfo } from "./protocols/cast.js";
@@ -110,7 +110,9 @@ async function discover(): Promise<DeviceGroup[]> {
 
   /* Etapa 0 — known hosts */
   if (appConfig.knownHostsFirst) {
-    const hosts = Object.values(knownHosts).filter((h) => sameSubnet(h.ip, iface));
+    const hosts = Object.values(knownHosts).filter(
+      (h) => sameSubnet(h.ip, iface) && !isVirtualInfrastructure({ name: h.name }),
+    );
     if (hosts.length) {
       progress(3, `Known hosts: ${hosts.length} IP(s)…`);
       logStep(`Etapa 0 — Known hosts: ${hosts.length} IP(s)…`);
@@ -320,7 +322,13 @@ async function discover(): Promise<DeviceGroup[]> {
   for (const g of groups) {
     if (!g.mac && arp.has(g.ip)) g.mac = arp.get(g.ip);
 
-    if (g.hints.size === 0 && g.mac) {
+    const virtualInfrastructure = isVirtualInfrastructure({
+      name: g.name,
+      model: g.model,
+      vendor: g.vendor,
+    });
+
+    if (!virtualInfrastructure && g.hints.size === 0 && g.mac) {
       const h = knownHosts[g.ip];
       if (h?.kind && h.kind !== "unknown" && h.mac === g.mac) {
         g.hints.add(h.kind);
@@ -328,10 +336,18 @@ async function discover(): Promise<DeviceGroup[]> {
       }
     }
 
-    g.kind = finalKind(g, gateway);
+    if (!virtualInfrastructure && g.mac) {
+      const h = knownHosts[g.ip];
+      if (h && h.mac === g.mac) {
+        if (h.vendor) g.evidence.push(`Módulo Wi-Fi: ${h.vendor}`);
+        if (h.name && g.name === g.ip) g.name = h.name;
+      }
+    }
+
+    g.kind = virtualInfrastructure ? "unknown" : finalKind(g, gateway);
     g.evidence = [...new Set(g.evidence)];
 
-    if (g.kind !== "unknown" && g.mac) {
+    if (!virtualInfrastructure && g.kind !== "unknown" && g.kind !== "router" && g.mac) {
       const h = knownHosts[g.ip] ?? { ip: g.ip, ports: [], lastSeen: "" };
       if (h.kind !== g.kind || h.mac !== g.mac) {
         h.kind = g.kind;
@@ -345,7 +361,9 @@ async function discover(): Promise<DeviceGroup[]> {
   if (cacheChanged) saveHosts(knownHosts);
 
   const result = groups
+    .filter((g) => g.kind !== "router")
     .filter((g) => g.connections.length > 0 || g.evidence.length > 0)
+    .filter((g) => !isVirtualInfrastructure({ name: g.name, model: g.model, vendor: g.vendor }))
     .sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.ip.localeCompare(b.ip))
     .map(toPublic);
 
@@ -357,7 +375,7 @@ async function discover(): Promise<DeviceGroup[]> {
     { "android-tv": 0, android: 0, apple: 0, router: 0, unknown: 0 } as Record<DeviceKind, number>,
   );
   logFound(
-    `Concluído: ${result.length} aparelho(s) — ${counts["android-tv"]} Android/Cast, ${counts.android} Android, ${counts.apple} Apple, ${counts.router} roteador(es), ${counts.unknown} não identificado(s)`,
+    `Concluído: ${result.length} aparelho(s) — ${counts["android-tv"]} Android/Cast, ${counts.android} Android, ${counts.apple} Apple, ${counts.unknown} não identificado(s)`,
   );
   return result;
 }

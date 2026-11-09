@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
-    "box": "node tools/box.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

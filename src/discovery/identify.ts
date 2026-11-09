@@ -1,6 +1,6 @@
 import { knownHosts, recordHost, saveHosts } from "../core/host-cache.js";
 import { logFound } from "../core/log.js";
-import { isAndroidModel, isAppleModel } from "./models.js";
+import { isAndroidModel, isAppleModel, specificDeviceType } from "./models.js";
 import type { MdnsService } from "./protocols/mdns.js";
 import type { SsdpHit } from "./protocols/ssdp.js";
 import type { Connection, DeviceGroup, DeviceKind, Group, Hint } from "./types.js";
@@ -102,6 +102,7 @@ export function toPublic(g: Group): DeviceGroup {
     ip: g.ip,
     name: g.name,
     kind: g.kind,
+    deviceType: specificDeviceType(g),
     model: g.model,
     vendor: g.vendor,
     mac: g.mac,
@@ -204,6 +205,12 @@ export function processMdns(devices: DeviceMap, services: MdnsService[], include
         devices.setInfo(s.ip, { name: txt.fn ?? undefined, model }, 2, "Apple Continuity");
         devices.hint(s.ip, "apple");
         logFound(`mDNS Apple: ${s.ip}${model ? ` model=${model}` : ""}`);
+        break;
+      }
+      case "_workstation._tcp.local": {
+        devices.setInfo(s.ip, { name: s.instance || undefined }, 1, "mDNS workstation");
+        devices.hint(s.ip, "linux-workstation");
+        logFound(`mDNS workstation: ${s.ip} "${s.instance}"`);
         break;
       }
     }

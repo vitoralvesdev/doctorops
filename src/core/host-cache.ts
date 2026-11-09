@@ -3,7 +3,17 @@ import path from "node:path";
 import type { DeviceKind } from "../discovery/types.js";
 import { DATA_DIR } from "./settings.js";
 
-export interface KnownHost { ip: string; ports: number[]; lastSeen: string; name?: string; mac?: string; kind?: DeviceKind; }
+export interface KnownHost {
+  ip: string;
+  ports: number[];
+  lastSeen: string;
+  name?: string;
+  mac?: string;
+  kind?: DeviceKind;
+  vendor?: string;
+  openPorts?: number[];
+  lastProbe?: string;
+}
 export type KnownHostMap = Record<string, KnownHost>;
 
 const HOSTS_FILE = path.join(DATA_DIR, "known-hosts.json");
