@@ -11,6 +11,7 @@ import { deepProbe, formatProbe } from "../discovery/probe.js";
 import { KIND_LABEL } from "../discovery/types.js";
 import { adbConnect, parseAdbDevices, resolveEndpoint, run, validEndpoint } from "./client.js";
 import { inspectUsb } from "./usb.js";
+import { analyzePackages } from "./analyze.js";
 import {
   captureScreen,
   ensureDevice,
@@ -21,6 +22,15 @@ import {
   stageUpload,
   uninstallPackage,
 } from "./ops.js";
+import {
+  applyOverlay,
+  cleanAfterUninstall,
+  formatLauncherInfo,
+  inspectLauncher,
+  installedPackages,
+  rollbackOverlay,
+} from "../launcher/overlay.js";
+import { tileForPackage } from "../launcher/profile.js";
 
 const router = Router();
 
@@ -29,9 +39,12 @@ function helpText(): string {
     "Comandos:",
     "  list <ip-ou-serial>      identifica e coleta dados via ADB",
     "  apps <alvo>              lista apps de usuário e de sistema",
+    "  analyze <alvo>           classifica o que dá para remover sem quebrar a box",
     "  install <alvo> <apk>     instala/atualiza um APK do PC",
     "  uninstall <alvo> <pacote> confirmar",
     "                           remove um app",
+    "  launcher <alvo> [clean|rollback|hide <pacote>|show <pacote>]",
+    "                           ícones de launcher com tiles fixos",
     "  screen <alvo>            captura a tela da box",
     "  push <alvo> <arquivo> [destino]",
     "                           envia um arquivo para a box",
@@ -259,6 +272,23 @@ router.post("/api/command", async (req, res) => {
     return;
   }
 
+  const analyzeMatch = raw.match(/^analyze\s+(\S+)$/i);
+  if (analyzeMatch) {
+    const target = cleanArg(analyzeMatch[1]);
+    logStep(`analyze ${target}…`);
+    const device = await ensureDevice(target);
+    if ("error" in device) {
+      res.json({ ok: false, output: device.error });
+      return;
+    }
+    try {
+      res.json({ ok: true, output: await analyzePackages(device) });
+    } catch (e) {
+      res.json({ ok: false, output: (e as Error).message });
+    }
+    return;
+  }
+
   const appsMatch = raw.match(/^apps\s+(\S+)$/i);
   if (appsMatch) {
     const target = cleanArg(appsMatch[1]);
@@ -294,6 +324,80 @@ router.post("/api/command", async (req, res) => {
     return;
   }
 
+  const launcherMatch = raw.match(/^launcher\s+(\S+)(?:\s+(info|clean|rollback|hide|show)(?:\s+(\S+))?)?$/i);
+  if (launcherMatch) {
+    const target = cleanArg(launcherMatch[1]);
+    const action = (launcherMatch[2] ?? "info").toLowerCase();
+    const pkg = launcherMatch[3] ? cleanArg(launcherMatch[3]) : "";
+    logStep(`launcher ${target} ${action}${pkg ? ` ${pkg}` : ""}`);
+    const device = await ensureDevice(target);
+    if ("error" in device) {
+      res.json({ ok: false, output: device.error });
+      return;
+    }
+    try {
+      const info = await inspectLauncher(device);
+      if (action === "info") {
+        res.json({ ok: true, output: formatLauncherInfo(device, info) });
+        return;
+      }
+      if (!info.profile) {
+        res.json({
+          ok: false,
+          output: [
+            `${device.ip}: ${info.home ?? "launcher"} não tem perfil de tiles fixos conhecido.`,
+            "",
+            "Em launcher dinâmico o ícone sai junto com o pacote; nada a limpar.",
+          ].join("\n"),
+        });
+        return;
+      }
+      if (action === "rollback") {
+        res.json(await rollbackOverlay(device, info.profile));
+        return;
+      }
+      if (action === "clean") {
+        if (info.hidden.size === 0) {
+          res.json({ ok: true, output: `${device.ip}: nenhum ícone órfão no launcher.` });
+          return;
+        }
+        res.json(await applyOverlay(device, info.profile, info.hidden));
+        return;
+      }
+      if (!pkg) {
+        res.json({ ok: false, output: `Use launcher ${device.ip} ${action} <pacote>.` });
+        return;
+      }
+      const tile = tileForPackage(info.profile, pkg);
+      if (!tile) {
+        res.json({ ok: false, output: `${pkg} não é um tile do perfil ${info.profile.name}.` });
+        return;
+      }
+      const hidden = new Set(info.hidden);
+      if (action === "hide") {
+        hidden.add(tile.index);
+      } else {
+        const installed = await installedPackages(device);
+        if (!installed.has(pkg)) {
+          res.json({
+            ok: false,
+            output: `${pkg} não está instalado; mostrar o tile deixaria um ícone morto na tela. Instale o app antes.`,
+          });
+          return;
+        }
+        hidden.delete(tile.index);
+      }
+      if (hidden.size === 0) {
+        res.json(await rollbackOverlay(device, info.profile));
+        return;
+      }
+      res.json(await applyOverlay(device, info.profile, hidden));
+    } catch (e) {
+      res.json({ ok: false, output: (e as Error).message });
+    }
+    return;
+  }
+
   const uninstallMatch = raw.match(/^uninstall\s+(\S+)\s+(\S+)(?:\s+(confirmar|--yes))?$/i);
   if (uninstallMatch) {
     const target = cleanArg(uninstallMatch[1]);
@@ -306,7 +410,16 @@ router.post("/api/command", async (req, res) => {
       return;
     }
     try {
-      res.json(await uninstallPackage(device, pkg, confirmed));
+      const result = await uninstallPackage(device, pkg, confirmed);
+      if (result.ok) {
+        try {
+          const extra = await cleanAfterUninstall(device, pkg);
+          if (extra) result.output += `\n\n${extra}`;
+        } catch (e) {
+          result.output += `\n\n(Aviso: não consegui limpar o ícone do launcher: ${(e as Error).message})`;
+        }
+      }
+      res.json(result);
     } catch (e) {
       res.json({ ok: false, output: (e as Error).message });
     }

@@ -1,3 +1,10 @@
-node_modules/\ndist/\n
-known-hosts\n*.log\n*.env\n*.DS_Store\ncoverage/\n
-captures
+node_modules/
+dist/
+known-hosts
+*.log
+*.env
+*.DS_Store
+coverage/
+captures/
+docs/*
+!docs/images/

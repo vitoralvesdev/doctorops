@@ -86,11 +86,28 @@ export function getCapabilities() {
           endpoints: ["POST /api/command"],
         },
         {
+          id: "adb-analyze",
+          title: "Analisar o que pode ser removido",
+          description:
+            "Classifica os pacotes de sistema em remover, revisar e manter, com base no que a box usa para boot, configuração, launcher, áudio, arquivos, OTA e ADB.",
+          commands: ["analyze <alvo>"],
+          endpoints: ["POST /api/command"],
+        },
+        {
+          id: "adb-functions",
+          title: "Funções guiadas",
+          description:
+            "Página com seleção de operação e campos dinâmicos para executar diagnósticos, conexão, apps, launcher, tela, arquivos e reboot, com histórico de execuções no estilo de log.",
+          entry: "/functions.html",
+          endpoints: ["POST /api/command", "POST /api/transfer"],
+        },
+        {
           id: "adb-install",
           title: "Instalar ou atualizar APK",
           description:
             "Instala um APK do PC via ADB ou pelo envio direto do arquivo no painel (Instalar APK).",
           commands: ["install <alvo> <caminho.apk>"],
+          entry: "/functions.html",
           endpoints: ["POST /api/command", "POST /api/transfer?action=install"],
         },
         {
@@ -99,6 +116,21 @@ export function getCapabilities() {
           description:
             "Remove um app pelo nome do pacote. Exige confirmar; apps de sistema podem falhar ou exigir pm uninstall --user 0.",
           commands: ["uninstall <alvo> <pacote> confirmar"],
+          entry: "/functions.html",
+          endpoints: ["POST /api/command"],
+        },
+        {
+          id: "adb-launcher",
+          title: "Ícones do launcher",
+          description:
+            "Em launchers com tiles fixos, esconde ícones de apps removidos via overlay de recursos (RRO). Permite inspecionar, limpar, esconder, mostrar e desfazer.",
+          commands: [
+            "launcher <alvo> [info]",
+            "launcher <alvo> clean",
+            "launcher <alvo> hide <pacote>",
+            "launcher <alvo> show <pacote>",
+            "launcher <alvo> rollback",
+          ],
           endpoints: ["POST /api/command"],
         },
         {
@@ -106,7 +138,7 @@ export function getCapabilities() {
           title: "Capturar a tela",
           description: "Tira um screenshot via ADB e mostra a prévia no painel.",
           commands: ["screen <alvo>"],
-          entry: "/discovery",
+          entry: "/functions.html",
           endpoints: ["POST /api/command", "GET /api/captures/:file"],
         },
         {
@@ -114,6 +146,7 @@ export function getCapabilities() {
           title: "Enviar arquivo",
           description: "Copia um arquivo do PC para a box (padrão /sdcard/Download).",
           commands: ["push <alvo> <arquivo> [destino]"],
+          entry: "/functions.html",
           endpoints: ["POST /api/command", "POST /api/transfer?action=push"],
         },
         {

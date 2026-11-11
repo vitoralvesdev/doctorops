@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.hx.mboxlauncher.MyRelativeLayout
+        android:id="@+id/t0"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:nextFocusUp="@+id/f0"
+        android:layout_width="288dp"
+        android:layout_height="437dp"
+        android:layout_marginLeft="130dp"
+        android:layout_marginTop="95dp"
+        android:defaultFocusHighlightEnabled="false">
+        <ImageView
+            android:id="@+id/i0"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_centerInParent="true" />
+    </com.hx.mboxlauncher.MyRelativeLayout>
+
+    <com.hx.mboxlauncher.MyRelativeLayout
+        android:id="@+id/t1"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:layout_width="217dp"
+        android:layout_height="212dp"
+        android:layout_marginLeft="431dp"
+        android:layout_marginTop="95dp"
+        android:defaultFocusHighlightEnabled="false">
+        <ImageView
+            android:id="@+id/i1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_centerInParent="true" />
+    </com.hx.mboxlauncher.MyRelativeLayout>
+
+    <com.hx.mboxlauncher.MyRelativeLayout
+        android:id="@+id/t2"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:layout_width="217dp"
+        android:layout_height="212dp"
+        android:layout_marginLeft="431dp"
+        android:layout_marginTop="320dp"
+        android:defaultFocusHighlightEnabled="false">
+        <ImageView
+            android:id="@+id/i2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_centerInParent="true" />
+    </com.hx.mboxlauncher.MyRelativeLayout>
+
+    <com.hx.mboxlauncher.MyRelativeLayout
+        android:id="@+id/t3"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:layout_width="131dp"
+        android:layout_height="212dp"
+        android:layout_marginLeft="661dp"
+        android:layout_marginTop="95dp"
+        android:defaultFocusHighlightEnabled="false">
+        <ImageView
+            android:id="@+id/i3"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_centerInParent="true" />
+    </com.hx.mboxlauncher.MyRelativeLayout>
+
+    <com.hx.mboxlauncher.MyRelativeLayout
+        android:id="@+id/t4"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:layout_width="131dp"
+        android:layout_height="212dp"
+        android:layout_marginLeft="805dp"
+        android:layout_marginTop="95dp"
+        android:defaultFocusHighlightEnabled="false">
+        <ImageView
+            android:id="@+id/i4"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_centerInParent="true" />
+    </com.hx.mboxlauncher.MyRelativeLayout>
+
+    <com.hx.mboxlauncher.MyRelativeLayout
+        android:id="@+id/t5"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:layout_width="275dp"
+        android:layout_height="212dp"
+        android:layout_marginLeft="661dp"
+        android:layout_marginTop="320dp"
+        android:defaultFocusHighlightEnabled="false">
+        <ImageView
+            android:id="@+id/i5"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_centerInParent="true" />
+    </com.hx.mboxlauncher.MyRelativeLayout>
+
+    <com.hx.mboxlauncher.MyRelativeLayout
+        android:id="@+id/t6"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:layout_width="202dp"
+        android:layout_height="212dp"
+        android:layout_marginLeft="949dp"
+        android:layout_marginTop="95dp"
+        android:defaultFocusHighlightEnabled="false">
+        <ImageView
+            android:id="@+id/i6"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_centerInParent="true" />
+    </com.hx.mboxlauncher.MyRelativeLayout>
+
+    <com.hx.mboxlauncher.MyRelativeLayout
+        android:id="@+id/t7"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:layout_width="202dp"
+        android:layout_height="212dp"
+        android:layout_marginLeft="949dp"
+        android:layout_marginTop="320dp"
+        android:defaultFocusHighlightEnabled="false">
+        <ImageView
+            android:id="@+id/i7"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_centerInParent="true" />
+    </com.hx.mboxlauncher.MyRelativeLayout>
+
+</RelativeLayout>

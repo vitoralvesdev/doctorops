@@ -16,7 +16,7 @@
     "ports": [
       80
     ],
-    "lastSeen": "2026-11-09T13:06:26.868Z",
+    "lastSeen": "2026-11-11T01:25:55.154Z",
     "kind": "router",
     "mac": "bc:f8:8b:18:c0:94"
   },
@@ -26,7 +26,7 @@
       49152,
       62078
     ],
-    "lastSeen": "2026-11-09T13:06:27.525Z",
+    "lastSeen": "2026-11-11T01:15:08.276Z",
     "kind": "apple",
     "mac": "76:b6:5a:1e:26:fe"
   },
@@ -45,9 +45,10 @@
   "192.168.1.21": {
     "ip": "192.168.1.21",
     "ports": [
-      44555
+      44555,
+      32905
     ],
-    "lastSeen": "2026-11-02T16:20:50.902Z",
+    "lastSeen": "2026-11-10T23:16:51.274Z",
     "kind": "android",
     "mac": "be:c9:40:c5:23:e0"
   },
@@ -59,7 +60,7 @@
       5000,
       61618
     ],
-    "lastSeen": "2026-11-09T13:06:35.635Z",
+    "lastSeen": "2026-11-09T13:06:43.766Z",
     "name": "66BAA8DE65E8@MacBook Air de User",
     "kind": "apple",
     "mac": "0E:02:54:2D:01:08"
@@ -71,6 +72,19 @@
     "openPorts": [],
     "lastProbe": "2026-11-09T12:47:28.260Z",
     "mac": "94:a1:a2:68:33:c8",
+    "vendor": "AMPAK Technology"
+  },
+  "192.168.1.28": {
+    "ip": "192.168.1.28",
+    "ports": [
+      5555
+    ],
+    "lastSeen": "2026-11-11T01:33:46.531Z",
+    "name": "Allwinner Transpeed_H616",
+    "kind": "android",
+    "mac": "94:a1:a2:68:33:c8",
+    "openPorts": [],
+    "lastProbe": "2026-11-11T00:07:50.299Z",
     "vendor": "AMPAK Technology"
   }
 }

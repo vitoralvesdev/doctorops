@@ -149,7 +149,8 @@ export async function inspectUsb(): Promise<string> {
   const hasAdbInterface = usb.some(isAdbInterface);
   const hasMtp = usb.some((d) => d.cls === "WPD");
   const hasRndis = usb.some((d) => d.cls === "Net");
-  const flashMode = usb.some((d) => d.vid === "2D01" || d.vid === "1F3A");
+  const felMode = usb.some((d) => d.vid === "2D01" || (d.vid === "1F3A" && d.pid === "EFE8"));
+  const allwinnerVendor = usb.some((d) => d.vid === "1F3A");
 
   if (adbOk) {
     const serial = adbLines.find((l) => /\sdevice\s/.test(` ${l} `))?.split(/\s+/)[0] ?? "";
@@ -163,9 +164,9 @@ export async function inspectUsb(): Promise<string> {
       "  Autorize 'Permitir depuração USB' na tela da box e rode `usb` de novo.",
       "  Se seguir em 'unauthorized', revogue as autorizações USB nas opções do desenvolvedor.",
     );
-  } else if (flashMode) {
+  } else if (felMode) {
     lines.push(
-      "  A box apareceu em modo de gravação Allwinner (PhoenixSuit).",
+      "  A box apareceu no modo FEL/boot ROM da Allwinner (PhoenixSuit).",
       "  Desligue da tomada e ligue normalmente para o Android subir com ADB.",
     );
   } else if (hasMtp) {
@@ -176,6 +177,13 @@ export async function inspectUsb(): Promise<string> {
     );
   } else if (hasRndis) {
     lines.push("  A box apareceu como rede USB (RNDIS). O cabo é de dados; falta habilitar a depuração USB.");
+  } else if (allwinnerVendor) {
+    lines.push(
+      "  O Windows viu o USB da Allwinner, mas sem a interface ADB.",
+      "  A box está ligada e falando USB em modo de fornecedor; isso não é modo gravação.",
+      "  Na TV: Opções do desenvolvedor > ligue 'Depuração USB' e reconecte o cabo.",
+      "  Sem esse ajuste o adb não enxerga a box e o ADB de rede continua desligado após o reboot.",
+    );
   } else if ((firstRun ? usb : freshUsb).some((d) => d.status !== "OK")) {
     lines.push(
       "  O Windows viu um USB com problema de driver (status diferente de OK).",

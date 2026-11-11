@@ -6,7 +6,7 @@
 
 O **Android Network** é uma ferramenta desenvolvida em Node.js e TypeScript para localizar, conectar e realizar operações de manutenção em Android TVs e TV Boxes pela rede.
 
-O modo oficial de conexão é a **descoberta de dispositivos + ADB**. A partir do painel de descoberta é possível identificar aparelhos, abrir um terminal ADB e executar tarefas como listar aplicativos, instalar e remover APKs, capturar a tela, transferir arquivos e reiniciar dispositivos.
+O modo oficial de conexão é a **descoberta de dispositivos + ADB**. A partir do painel de descoberta é possível identificar aparelhos e abrir um terminal ADB. A página **Funções** transforma as tarefas de manutenção em um formulário guiado — listar e analisar apps, instalar ou remover APKs, controlar ícones do launcher, capturar a tela, transferir arquivos e reiniciar — com o resultado em um histórico visual de execuções.
 
 A proposta de evolução é tornar a aplicação **inteligente**: no futuro, um **Agent com IA** deverá permitir interação em linguagem natural com o aparelho, interpretando o contexto e executando operações compatíveis com as permissões disponíveis. Esse recurso ainda é um roadmap e não está implementado.
 
@@ -16,10 +16,6 @@ Abaixo estão algumas capturas reais do painel, mostrando a descoberta de dispos
 
 <p align="center">
   <img src="docs/images/discovery-adb.png" alt="Painel de descoberta de dispositivos e terminal ADB" width="100%">
-</p>
-
-<p align="center">
-  <img src="docs/images/apps-arquivos-logs.png" alt="Área de aplicativos, arquivos e logs de descoberta" width="100%">
 </p>
 
 > **Status do projeto:** em desenvolvimento ativo. A descoberta de dispositivos e o modo ADB já possuem funcionalidades operacionais. O Agent com IA é planejado e ainda não está disponível.
@@ -83,8 +79,10 @@ O módulo ADB permite executar operações diretamente em dispositivos Android a
 
 - Identificar o dispositivo e consultar informações do sistema.
 - Listar aplicativos instalados, incluindo aplicativos de sistema.
+- Analisar quais pacotes de sistema podem ser removidos sem afetar boot, configuração e gerenciamento.
 - Instalar e atualizar arquivos APK.
-- Desinstalar aplicativos.
+- Desinstalar aplicativos, com limpeza automática do ícone no launcher.
+- Esconder, mostrar e restaurar ícones de launchers com tiles fixos.
 - Capturar a tela do dispositivo.
 - Transferir arquivos do computador para a TV Box.
 - Reiniciar o dispositivo.
@@ -263,24 +261,26 @@ Android 11+ com **Depuração sem fio** não existe em ROM stock H6/H616; ROM de
 
 Os comandos podem ser executados pelo terminal da interface `/discovery` ou pelo terminal do sistema, conforme indicado.
 
-| Comando                               | Descrição                           |
-| ------------------------------------- | ----------------------------------- |
-| `list <ip-ou-serial>`                 | Consulta informações do dispositivo |
-| `apps <alvo>`                         | Lista aplicativos instalados        |
-| `install <alvo> <apk>`                | Instala ou atualiza um APK          |
-| `uninstall <alvo> <pacote> confirmar` | Desinstala um aplicativo            |
-| `screen <alvo>`                       | Captura a tela da TV                |
-| `push <alvo> <arquivo> [destino]`     | Envia um arquivo para o dispositivo |
-| `reboot <alvo> confirmar`             | Reinicia o dispositivo              |
-| `pair <ip:porta> <código>`            | Pareia a depuração sem fio          |
-| `probe <ip> [full]`                   | Diagnóstico profundo de um IP       |
-| `usb`                                 | Aparelhos no USB e o que o sistema enumerou |
-| `tcpip <serial> [porta]`              | Converte um aparelho USB em ADB de rede |
-| `connect <ip[:porta]>`                | Conecta um dispositivo pela rede    |
-| `disconnect <ip[:porta]>`             | Encerra uma conexão                 |
-| `clear`                               | Limpa só a tela do terminal         |
-| `abort`                               | Interrompe uma operação compatível  |
-| `help`                                | Exibe a ajuda de comandos           |
+| Comando                                                           | Descrição                                   |
+| ----------------------------------------------------------------- | ------------------------------------------- |
+| `list <ip-ou-serial>`                                             | Consulta informações do dispositivo         |
+| `apps <alvo>`                                                     | Lista aplicativos instalados                |
+| `analyze <alvo>`                                                  | Classifica o que pode ser removido          |
+| `install <alvo> <apk>`                                            | Instala ou atualiza um APK                  |
+| `uninstall <alvo> <pacote> confirmar`                             | Desinstala um aplicativo                    |
+| `launcher <alvo> [clean\|hide <pacote>\|show <pacote>\|rollback]` | Limpa ícones fixos de apps removidos        |
+| `screen <alvo>`                                                   | Captura a tela da TV                        |
+| `push <alvo> <arquivo> [destino]`                                 | Envia um arquivo para o dispositivo         |
+| `reboot <alvo> confirmar`                                         | Reinicia o dispositivo                      |
+| `pair <ip:porta> <código>`                                        | Pareia a depuração sem fio                  |
+| `probe <ip> [full]`                                               | Diagnóstico profundo de um IP               |
+| `usb`                                                             | Aparelhos no USB e o que o sistema enumerou |
+| `tcpip <serial> [porta]`                                          | Converte um aparelho USB em ADB de rede     |
+| `connect <ip[:porta]>`                                            | Conecta um dispositivo pela rede            |
+| `disconnect <ip[:porta]>`                                         | Encerra uma conexão                         |
+| `clear`                                                           | Limpa só a tela do terminal                 |
+| `abort`                                                           | Interrompe uma operação compatível          |
+| `help`                                                            | Exibe a ajuda de comandos                   |
 
 Exemplo:
 
@@ -294,6 +294,14 @@ Listar aplicativos:
 apps 192.168.1.20
 ```
 
+Analisar o que dá para remover sem quebrar a box:
+
+```bash
+analyze 192.168.1.20
+```
+
+O `analyze` não altera nada: separa os pacotes de sistema em **pode remover** (testes de fábrica, protetores de tela, impressão, galeria, câmera), **revisar** (Google, telefonia, navegador) e **manter** (boot, configurações, launcher, áudio, arquivos, OTA e ADB). Ele mostra o navegador padrão detectado e o comando para reverter um pacote removido com `cmd package install-existing`.
+
 Instalar um APK:
 
 ```bash
@@ -306,11 +314,84 @@ Desinstalar um aplicativo:
 uninstall 192.168.1.20 com.exemplo.aplicativo confirmar
 ```
 
+Em launchers de fabricante com tiles fixos, o ícone não sai junto com o pacote. Nesses casos o `uninstall` também limpa o ícone automaticamente, e o comando `launcher` permite controlar isso:
+
+```bash
+launcher 192.168.1.20            # mostra launcher, tiles e ícones órfãos
+launcher 192.168.1.20 clean      # esconde todos os tiles de apps que não existem mais
+launcher 192.168.1.20 hide com.google.android.youtube.tv
+launcher 192.168.1.20 rollback   # desfaz e volta ao launcher original
+```
+
+A limpeza usa um overlay de recursos: o APK do launcher não é alterado e o `rollback` desfaz na hora. No Android 10 o overlay só aplica se estiver assinado com o mesmo certificado do launcher (ou pré-instalado em `/system`) — o HLauncher usa a testkey pública do AOSP, então o programa assina o overlay com ela. Detalhes e o que fazer em outros aparelhos: [docs/hlauncher.md](docs/hlauncher.md).
+
+Aparelhos já testados e o que foi validado em cada um estão na seção [Dispositivos validados](#dispositivos-validados).
+
 O alvo pode ser um endereço IP, um endereço com porta ou o serial USB exibido pelo `adb devices`.
 
-### Área de aplicativos e arquivos
+### Dispositivos validados
 
-A interface `/discovery` também disponibiliza uma área para selecionar arquivos pelo navegador e executar operações de instalação, transferência, captura de tela e reinicialização.
+Catálogo dos aparelhos testados com o Android Network. A homologação é feita em etapas, da mais básica para a mais invasiva:
+
+| Etapa | O que valida                                                |
+| ----- | ----------------------------------------------------------- |
+| 1     | `list` encontra o aparelho e `connect` abre o ADB           |
+| 2     | `apps`, `screen`, `push` e `install` funcionam              |
+| 3     | `uninstall` remove o pacote e o ícone some da tela          |
+| 4     | Limpeza de ícones estáticos de pacotes que não existem mais |
+
+#### Homologados
+
+**Transpeed 6K Ultra (H616)**
+
+| Campo            | Valor                                                                                        |
+| ---------------- | -------------------------------------------------------------------------------------------- |
+| Modelo reportado | `Transpeed_H616`                                                                             |
+| Android          | 10                                                                                           |
+| Etapa            | 1 a 4 — `list`/`connect`, `apps`/`screen`/`push`/`install`, `uninstall` + limpeza automática |
+| Observações      | ADB de rede só existe depois de `tcpip 5555` e volta a cair a cada reboot                    |
+
+**Samsung Galaxy S20**
+
+| Campo    | Valor                     |
+| -------- | ------------------------- |
+| Modelo   | Galaxy S20                |
+| Android  | não registrado            |
+| Conexão  | ADB (USB)                 |
+| Etapa    | 1 — `list` + `connect`    |
+| Launcher | dinâmico (padrão Samsung) |
+
+#### Parcialmente validados
+
+**Android TV original (marca não identificada)**
+
+| Campo                       | Valor                                                 |
+| --------------------------- | ----------------------------------------------------- |
+| Modelo                      | não identificado (teste feito em outro notebook/rede) |
+| Android                     | não registrado                                        |
+| Conexão                     | ADB pela rede local                                   |
+| Etapa                       | 1 — `list` + `connect`                                |
+| `uninstall` remove o ícone? | **Sim** — o ícone sumiu da tela logo após a remoção   |
+
+Esse resultado mostra que o comportamento depende do launcher: em Android TV com launcher dinâmico o ícone acompanha o pacote; em launchers de fabricante com tiles fixos, não.
+
+#### Como homologar um aparelho novo
+
+1. Rode `usb` e `list <ip>` para confirmar a etapa 1.
+2. Rode `apps <ip>` e `screen <ip>` para a etapa 2.
+3. Instale um APK de teste, remova com `uninstall <ip> <pacote> confirmar` e confira a tela.
+
+### Funções guiadas
+
+A página `/functions.html` concentra as operações de manutenção em um único formulário. Em vez de digitar comandos, você escolhe a função em uma lista e preenche apenas os campos daquela operação:
+
+- Diagnóstico: identificar aparelho, analisar o que pode ser removido, diagnóstico de rede e dispositivos no USB.
+- Conexão: conectar, desconectar, parear e ativar o ADB por rede a partir do USB.
+- Apps: listar, instalar APK, remover e controlar os ícones do launcher.
+- Tela e arquivos: capturar a tela e enviar arquivos.
+- Sistema: reiniciar a box.
+
+Cada execução entra no painel **Atividade**, no estilo de um log (horário, status, duração e saída), com filtro, cópia da saída e preview das capturas de tela. O alvo pode ser digitado ou escolhido entre os dispositivos já encontrados pela descoberta.
 
 As operações dependem de ADB habilitado e autorizado no dispositivo.
 
@@ -378,6 +459,7 @@ src/
 │   └── routes.ts              # Endpoints da descoberta
 │
 └── adb/
+    ├── analyze.ts             # Classificação de pacotes seguros para remoção
     ├── client.ts              # Cliente ADB e resolução de alvos
     ├── ops.ts                 # Operações de manutenção
     ├── keepalive.ts           # Reconexão e monitoramento
@@ -385,11 +467,13 @@ src/
 
 public/
 ├── discovery.html             # Descoberta e terminal (página inicial)
+├── functions.html             # Funções guiadas com histórico de execuções
 ├── commands.html              # Referência de comandos
 ├── settings.html              # Configurações
 └── js/
     ├── common.js
     ├── capabilities.js
+    ├── functions.js
     └── discovery.js
 ```
 

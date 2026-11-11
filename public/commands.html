@@ -6,327 +6,705 @@
   <title>Lista de Comandos — Android Network ADB</title>
   <link rel="stylesheet" href="/styles.css">
   <style>
-    .cmd-page { width: min(900px, calc(100% - 40px)); margin: auto; padding: 32px 0 60px; }
+    html, body { height: 100%; }
+    body { overflow: hidden; }
+
+    .cmd-shell {
+      display: grid;
+      grid-template-columns: 264px minmax(0, 1fr);
+      height: 100vh;
+    }
+
+    /* ── Menu lateral ─────────────────────────────── */
+    .cmd-sidebar {
+      display: flex; flex-direction: column; gap: 14px;
+      padding: 22px 14px 16px;
+      background: #0e131b; border-right: 1px solid var(--border);
+      overflow-y: auto;
+    }
+    .cmd-brand small {
+      color: var(--green); font-size: 10px; font-weight: 800;
+      letter-spacing: .15em;
+    }
+    .cmd-brand h1 {
+      margin: 2px 0 0; font-size: 21px; letter-spacing: -.03em;
+    }
+    .cmd-brand h1 b { color: var(--green); }
 
     .cmd-back {
       display: inline-flex; align-items: center; gap: 6px;
-      color: var(--muted); font-size: 13px; text-decoration: none;
-      margin-bottom: 28px; transition: color .15s;
+      color: var(--muted); font-size: 12px; text-decoration: none;
+      padding: 0 4px; transition: color .15s;
     }
     .cmd-back:hover { color: var(--text); }
 
-    .cmd-title { margin: 0 0 4px; font-size: clamp(22px,3vw,32px); letter-spacing: -.03em; }
-    .cmd-title b { color: var(--green); }
-    .cmd-subtitle { color: var(--muted); margin: 0 0 32px; }
+    .cmd-search { position: relative; }
+    .cmd-search span {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      color: #657286; font-size: 12px; pointer-events: none;
+    }
+    .cmd-search input {
+      width: 100%; border: 1px solid var(--border); background: #0b0f16;
+      color: var(--text); border-radius: 8px; padding: 9px 11px 9px 30px;
+      font: 12px system-ui; outline: 0;
+    }
+    .cmd-search input:focus { border-color: #3d5a4a; }
+    .cmd-search input::placeholder { color: #5d6b7e; }
 
-    .cmd-section { margin-bottom: 36px; }
-    .cmd-section h2 {
-      font-size: 11px; font-weight: 800; letter-spacing: .12em;
-      color: var(--green); text-transform: uppercase;
-      margin: 0 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;
+    .nav-group { margin-top: 4px; }
+    .nav-label {
+      font-size: 10px; color: #5d6b7e; text-transform: uppercase;
+      letter-spacing: .1em; font-weight: 800; padding: 4px 10px 6px;
+    }
+    .nav-item {
+      width: 100%; display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border: 1px solid transparent; border-radius: 8px;
+      background: transparent; color: #aab7c8; text-align: left;
+      font: 600 13px system-ui; cursor: pointer; transition: background .12s, color .12s;
+    }
+    .nav-item:hover { background: #141b25; color: var(--text); }
+    .nav-item[aria-current="page"] {
+      background: #15241d; border-color: #2a4a38; color: #eafff5;
+    }
+    .nav-item .ico { width: 18px; text-align: center; color: var(--green); }
+    .nav-item .n {
+      margin-left: auto; font: 10px Consolas, monospace; color: #657286;
+      background: #111823; border-radius: 10px; padding: 1px 7px;
+    }
+    .nav-item[aria-current="page"] .n { color: var(--green); background: #16261e; }
+
+    .sidebar-foot {
+      margin-top: auto; padding-top: 14px; border-top: 1px solid #1a2130;
+      display: flex; flex-direction: column; gap: 6px;
+      font-size: 11px; color: #657286;
+    }
+    .sidebar-foot a { color: var(--muted); text-decoration: none; }
+    .sidebar-foot a:hover { color: var(--text); }
+
+    /* ── Área central ─────────────────────────────── */
+    .cmd-main { display: flex; flex-direction: column; min-width: 0; height: 100vh; }
+
+    /* Menu superior desativado no desktop: a navegação fica no menu lateral.
+       Continua ativo no mobile (abaixo de 900px), onde o menu lateral é oculto.
+       Para reativar no desktop, troque display:none por flex. */
+    .cmd-tabbar {
+      display: none; align-items: stretch; gap: 2px;
+      padding: 0 24px; background: #0d1219;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto; flex-shrink: 0;
+    }
+    .cmd-tab {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 13px 14px 11px; border: 0; border-bottom: 2px solid transparent;
+      background: transparent; color: var(--muted);
+      font: 600 12.5px system-ui; white-space: nowrap; cursor: pointer;
+      transition: color .12s, border-color .12s;
+    }
+    .cmd-tab:hover { color: var(--text); }
+    .cmd-tab[aria-current="page"] { color: var(--text); border-bottom-color: var(--green); }
+    .cmd-tab .n { font: 10px Consolas, monospace; color: #657286; }
+    .cmd-tab[aria-current="page"] .n { color: var(--green); }
+
+    .cmd-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+    .cmd-content { max-width: 1180px; padding: 26px 28px 48px; }
+
+    .cmd-head { display: flex; align-items: flex-start; justify-content: flex-start; gap: 14px; margin-bottom: 18px; }
+    .cmd-head > div { flex: 1 1 220px; min-width: 0; }
+    .cmd-head .ico {
+      width: 38px; height: 38px; flex-shrink: 0;
+      display: grid; place-items: center; border-radius: 10px;
+      background: #15241d; border: 1px solid #2a4a38;
+      color: var(--green); font-size: 17px;
+    }
+    .cmd-head h2 { margin: 0; font-size: 20px; letter-spacing: -.02em; }
+    .cmd-head p { margin: 3px 0 0; font-size: 12.5px; color: var(--muted); max-width: 76ch; }
+    .cmd-head .pill {
+      margin-left: auto; flex-shrink: 0; align-self: center;
+      font-size: 10px; font-weight: 800; letter-spacing: .05em;
+      text-transform: uppercase; color: var(--green);
+      background: #15241d; border: 1px solid #2a4a38;
+      border-radius: 20px; padding: 4px 10px; white-space: nowrap;
     }
 
-    table { width: 100%; border-collapse: collapse; }
-    thead th {
-      text-align: left; font-size: 11px; color: var(--muted);
-      font-weight: 600; padding: 8px 14px; border-bottom: 1px solid var(--border);
+    .cmd-list {
+      display: grid; gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     }
-    tbody tr { border-bottom: 1px solid #1a2130; transition: background .1s; }
-    tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: #141c27; }
-    td { padding: 12px 14px; vertical-align: top; font-size: 13px; }
-
-    .td-cmd { width: 220px; }
-    .cmd-syntax {
-      font-family: Consolas, monospace; font-size: 13px;
-      color: var(--text);
+    .cmd-card {
+      display: flex; flex-direction: column; gap: 8px;
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px; min-width: 0;
+      transition: border-color .12s;
     }
-    .cmd-syntax .arg { color: var(--blue); }
+    .cmd-card:hover { border-color: #3a4a5e; }
+    .card-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .cmd-sig {
+      font: 600 13px Consolas, monospace; color: var(--text);
+      overflow-wrap: anywhere;
+    }
+    .cmd-sig .arg { color: var(--blue); }
+    .cmd-sig .lit { color: var(--muted); font-weight: 400; }
+    .badge-ok {
+      display: inline-flex; align-items: center; gap: 5px; margin-left: auto;
+      font-size: 9px; font-weight: 800; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--green); white-space: nowrap;
+    }
+    .badge-ok::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 6px #65d6a5;
+    }
+    .cmd-desc {
+      margin: 0; font-size: 12.5px; color: #b6c4d6; line-height: 1.65;
+    }
+    .cmd-desc code, .cmd-note code, .step code {
+      font-family: Consolas, monospace; color: #b7d2ff;
+    }
     .cmd-example {
-      display: inline-block; margin-top: 5px;
-      font-family: Consolas, monospace; font-size: 11px;
-      color: var(--muted); background: #0d1118;
-      padding: 2px 7px; border-radius: 4px;
+      align-self: flex-start; max-width: 100%;
+      font: 11.5px Consolas, monospace; color: var(--muted);
+      background: #0d1118; border: 1px solid #1a2130; border-radius: 5px;
+      padding: 3px 8px; overflow-wrap: anywhere;
     }
-    .td-desc { color: #b6c4d6; line-height: 1.6; }
-    .td-desc ul { margin: 6px 0 0 0; padding-left: 18px; }
-    .td-desc li { margin-bottom: 3px; }
-    .td-status { width: 110px; }
-    .badge-ok      { color: var(--green); }
-    .badge-planned { color: #f1ca79; }
-    .badge-control { color: var(--blue); }
+    .cmd-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; padding-top: 2px; }
+    .tag-pill {
+      font-size: 10px; font-weight: 700; border-radius: 4px;
+      padding: 1px 7px; background: #151d29;
+      border: 1px solid var(--border); color: #8e9bad;
+    }
+    .tag-green { background: #1a2e23; border-color: #2a4a38; color: var(--green); }
+    .tag-blue  { background: #182234; border-color: #2c3d5c; color: var(--blue); }
+    .tag-amber { background: #2e2a1a; border-color: #4a4028; color: #f1ca79; }
 
-    .note {
-      margin-top: 28px; padding: 13px 16px;
+    .cmd-note {
+      margin-top: 18px; padding: 14px 16px;
       border: 1px solid #34465b; border-radius: 10px;
-      background: #111a27; color: #b6c4d6; font-size: 13px; line-height: 1.6;
+      background: #111a27; color: #b6c4d6; font-size: 12.5px; line-height: 1.7;
     }
-    .note b { color: var(--blue); }
+    .cmd-note b { color: var(--blue); }
+    .cmd-note + .cmd-note { margin-top: 10px; }
+    .cmd-note a { color: var(--blue); }
+
+    .quick {
+      display: grid; gap: 12px; margin-top: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+    .step {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px;
+    }
+    .step b { display: block; font-size: 12px; color: var(--green); margin-bottom: 5px; }
+    .step p { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 6px 0 0; }
+    .step code { font-size: 11.5px; }
+
+    .search-group + .search-group { margin-top: 26px; }
+    .search-group h3 {
+      margin: 0 0 10px; font-size: 11px; font-weight: 800; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--green);
+      border-bottom: 1px solid var(--border); padding-bottom: 7px;
+    }
+    .search-empty {
+      padding: 60px 20px; text-align: center; color: var(--muted);
+      border: 1px dashed var(--border); border-radius: 12px;
+    }
+    .search-empty b { color: var(--text); }
+
+    .caps-topic .caps { padding: 0; }
+
+    .cmd-back-mobile { display: none; }
+
+    /* ── Tela estreita ────────────────────────────── */
+    @media (max-width: 900px) {
+      body { overflow: auto; }
+      .cmd-shell { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+      .cmd-sidebar { display: none; }
+      .cmd-main { height: auto; min-height: 100vh; }
+      .cmd-tabbar { display: flex; padding: 0 8px; }
+      .cmd-back-mobile {
+        display: inline-flex; align-items: center; padding: 0 10px;
+        color: var(--muted); text-decoration: none; font-size: 16px;
+      }
+      .cmd-content { padding: 18px 16px 40px; }
+      .cmd-list { grid-template-columns: 1fr; }
+      .cmd-head .pill { margin-left: 0; align-self: flex-start; }
+    }
   </style>
 </head>
 <body>
-<main class="cmd-page">
+<div class="cmd-shell">
 
-  <a href="/discovery" class="cmd-back">← Voltar</a>
+  <aside class="cmd-sidebar">
+    <div class="cmd-brand">
+      <small>ANDROID NETWORK</small>
+      <h1>Lista de <b>comandos</b></h1>
+    </div>
+    <a class="cmd-back" href="/functions.html">◆ Funções</a>
+    <a class="cmd-back" href="/discovery">← Descoberta</a>
+    <div class="cmd-search">
+      <span>⌕</span>
+      <input id="cmd-filter" type="search" placeholder="Filtrar comandos…" autocomplete="off" aria-label="Filtrar comandos">
+    </div>
+    <nav id="cmd-nav" aria-label="Tópicos de comandos"></nav>
+    <div class="sidebar-foot">
+      <a href="/settings.html">⚙ Configurações</a>
+      <span>Servidor local · API restrita ao localhost</span>
+    </div>
+  </aside>
 
-  <h1 class="cmd-title">Lista de <b>Comandos</b></h1>
-  <p class="cmd-subtitle">A descoberta é o modo oficial. O terminal da página <a href="/discovery">Descoberta</a> executa os comandos ADB listados abaixo.</p>
+  <main class="cmd-main">
+    <div class="cmd-tabbar" id="cmd-tabs" aria-label="Tópicos">
+      <a class="cmd-back-mobile" href="/functions.html" aria-label="Ir para Funções">◆</a>
+      <a class="cmd-back-mobile" href="/discovery" aria-label="Voltar para Descoberta">←</a>
+    </div>
+    <div class="cmd-scroll" id="cmd-scroll">
+      <div class="cmd-content" id="cmd-content"></div>
+    </div>
+  </main>
 
-  <!-- ── Comandos de dispositivo ── -->
-  <div class="cmd-section">
-    <h2>Dispositivo</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Sintaxe</th>
-          <th>Descrição</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">list <span class="arg">&lt;ip-ou-nome&gt;</span></span><br>
-            <span class="cmd-example">list 192.168.1.50</span>
-          </td>
-          <td class="td-desc">
-            Identifica o aparelho e, se o ADB estiver acessível, exibe um painel completo com:
-            <ul>
-              <li>Tipo detectado (Android TV, TV Box, Android, Apple) e modelo/fabricante</li>
-              <li>Identificação: fabricante, marca, modelo, CPU, Android, SDK, Build ID</li>
-              <li>Memória RAM: total, em uso (com barra de progresso), disponível</li>
-              <li>Armazenamento <code>/data</code>: total, usado, livre</li>
-              <li>Uptime do sistema</li>
-              <li>Bateria: nível %, status e temperatura</li>
-              <li>Todas as conexões detectadas neste aparelho</li>
-            </ul>
-            Se o ADB não estiver acessível, mostra as conexões encontradas e instruções de pareamento.
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">probe <span class="arg">&lt;ip&gt;</span> <span class="arg">[full]</span></span><br>
-            <span class="cmd-example">probe 192.168.1.26</span>
-          </td>
-          <td class="td-desc">
-            Diagnóstico profundo de um IP: portas TCP, banners HTTP/RTSP, SSDP/mDNS/NetBIOS,
-            TTL, MAC e fabricante do módulo Wi-Fi (OUI local). Com <code>full</code>, varre 1–65535.
-            Grava fabricante e portas no cache de hosts. Útil para boxes que aparecem como desconhecidas.
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">usb</span><br>
-            <span class="cmd-example">usb</span>
-          </td>
-          <td class="td-desc">
-            Mostra o que o <code>adb</code> lista e o que o Windows enumerou no USB
-            (VID/PID, classe e nome), com a diferença em relação à consulta anterior.
-            Rode sem o cabo, conecte o cabo e rode de novo: se nada novo aparecer,
-            o cabo é só de carga ou a porta não faz conexão de dados.
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">tcpip <span class="arg">&lt;serial-usb&gt;</span> <span class="arg">[porta]</span></span><br>
-            <span class="cmd-example">tcpip 0123456789ABCDEF</span>
-          </td>
-          <td class="td-desc">
-            Converte um aparelho conectado por USB em ADB de rede (<code>adb tcpip</code>).
-            Descobre o IP pela shell, tenta persistir <code>persist.adb.tcp.port</code> quando há root
-            e conecta em seguida. Necessário apenas uma vez; depois use <code>connect &lt;ip&gt;</code>.
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">clear</span><br>
-            <span class="cmd-example">clear</span>
-          </td>
-          <td class="td-desc">
-            Limpa apenas o que está na tela do terminal. O histórico de comandos e os
-            registros salvos continuam intactos.
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">help</span><br>
-            <span class="cmd-example">help</span>
-          </td>
-          <td class="td-desc">Lista os comandos aceitos pelo terminal.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+</div>
 
-  <!-- ── Comandos de ADB ── -->
-  <div class="cmd-section">
-    <h2>Pareamento e ADB</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Sintaxe</th>
-          <th>Descrição</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">pair <span class="arg">&lt;ip:porta&gt;</span> <span class="arg">&lt;código&gt;</span></span><br>
-            <span class="cmd-example">pair 192.168.1.50:37123 123456</span>
-          </td>
-          <td class="td-desc">
-            Pareia a depuração sem fio (Android 11+) usando a porta e o código exibidos em
-            <em>Opções do desenvolvedor → Depuração sem fio → Parear dispositivo</em> na TV.
-            A porta de pareamento é diferente da porta de conexão e muda a cada pareamento.
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">connect <span class="arg">&lt;ip-ou-nome[:porta]&gt;</span></span><br>
-            <span class="cmd-example">connect 192.168.1.50:5555</span>
-          </td>
-          <td class="td-desc">
-            Conecta via ADB. Porta padrão: 5555 (Android 10 ou menor). Após o pareamento,
-            use a porta de conexão exibida na tela de Depuração sem fio.
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">disconnect <span class="arg">&lt;ip-ou-nome[:porta]&gt;</span></span><br>
-            <span class="cmd-example">disconnect 192.168.1.50:5555</span>
-          </td>
-          <td class="td-desc">Desconecta uma sessão ADB.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+<script>
+(() => {
+  const ARG = (s) => `<span class="arg">&lt;${s}&gt;</span>`;
+  const LIT = (s) => `<span class="lit">${s}</span>`;
 
-  <!-- ── Comandos de controle ── -->
-  <div class="cmd-section">
-    <h2>Controle</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Sintaxe</th>
-          <th>Descrição</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">abort</span><br>
-            <span class="cmd-example">abort</span>
-          </td>
-          <td class="td-desc">
-            Cancela a operação em andamento no servidor (varredura de rede, conexão ADB, coleta de dados).
-            Útil quando o terminal travar ou a operação demorar mais do que o esperado.
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  const TOPICS = [
+    {
+      id: "geral",
+      icon: "◈",
+      title: "Visão geral",
+      summary: "Como o terminal funciona, quais alvos aceita e o caminho mais curto até o ADB.",
+      intro: `
+        <div class="cmd-note">
+          <b>Como funciona:</b> os comandos rodam no servidor Node.js local e chamam o
+          <code>adb</code> do próprio PC. O terminal não é um shell livre — só aceita os
+          comandos listados aqui. O alvo pode ser um IP, <code>ip:porta</code> ou o serial
+          USB exibido por <code>adb devices</code>. Em aparelhos ligados por cabo, use o
+          serial no lugar do IP: <code>apps DEMO1234567890</code>.
+        </div>
+        <div class="quick">
+          <div class="step">
+            <b>1 · Descobrir</b>
+            <code>list <span class="arg">&lt;ip&gt;</span></code>
+            <p>Identifica o tipo do aparelho, mostra as conexões e, se o ADB já estiver aberto, coleta o painel completo.</p>
+          </div>
+          <div class="step">
+            <b>2 · Abrir o ADB</b>
+            <code>connect <span class="arg">&lt;ip&gt;</span>:5555</code>
+            <p>Android 10 ou menor. No Android 11+ use <code>pair</code> com a porta e o código exibidos na TV e depois <code>connect</code> na porta de conexão.</p>
+          </div>
+          <div class="step">
+            <b>3 · Cabo USB uma vez</b>
+            <code>tcpip <span class="arg">&lt;serial-usb&gt;</span></code>
+            <p>Liga o ADB de rede a partir do cabo. Com root, grava <code>persist.adb.tcp.port</code> e a porta sobrevive ao reboot.</p>
+          </div>
+          <div class="step">
+            <b>4 · Manutenção</b>
+            <code>apps · install · uninstall · launcher</code>
+            <p>Listar, instalar, remover apps e limpar ícones fixos do launcher. <code>screen</code> e <code>push</code> cuidam de tela e arquivos.</p>
+          </div>
+        </div>
+        <div class="cmd-note">
+          <b>Confirmação:</b> <code>uninstall</code> e <code>reboot</code> exigem a palavra
+          <code>confirmar</code> no fim do comando. Sem ela, o programa apenas pede
+          confirmação e não executa nada.
+        </div>`,
+      commands: [],
+    },
+    {
+      id: "dispositivo",
+      icon: "▣",
+      title: "Dispositivo",
+      summary: "Identificar o aparelho, sondar a rede e abrir o ADB pela rede a partir do USB.",
+      commands: [
+        {
+          syntax: `list ${ARG("ip-ou-nome|serial")}`,
+          example: "list 192.168.1.28",
+          desc: `Identifica o aparelho e, com o ADB acessível, monta o painel completo: tipo (Android TV, TV box, Android, Apple), fabricante, marca, modelo, board, CPU, Android/SDK, build, RAM em uso, <code>/data</code>, uptime, bateria e conexões detectadas. Sem ADB, mostra as conexões e o passo a passo para habilitar.`,
+          tags: [{ label: "ADB" }, { label: "painel" }],
+        },
+        {
+          syntax: `probe ${ARG("ip")} ${LIT("[full]")}`,
+          example: "probe 192.168.1.26 full",
+          desc: `Diagnóstico profundo de um IP: portas TCP abertas, banners HTTP/RTSP, SSDP, mDNS, NetBIOS, TTL, MAC e fabricante do módulo Wi-Fi pelo OUI. Com <code>full</code> varre as 65.535 portas. Grava os achados no cache de hosts.`,
+          tags: [{ label: "rede" }, { label: "cache de hosts" }],
+        },
+        {
+          syntax: "usb",
+          example: "usb",
+          desc: `Compara o que o <code>adb</code> lista com o que o Windows enumerou no USB (VID/PID, classe e nome) e destaca o que mudou desde a última consulta. Reconhece interface ADB (MI_01), modo FEL/ROM, MTP, RNDIS e aparelho exposto só como interface proprietária.`,
+          tags: [{ label: "diagnóstico" }, { label: "USB" }],
+        },
+        {
+          syntax: `tcpip ${ARG("serial-usb")} ${LIT("[porta]")}`,
+          example: "tcpip DEMO1234567890 5555",
+          desc: `Liga o ADB de rede a partir de um aparelho no cabo USB: descobre o IP pela shell, ativa o adbd em TCP (padrão 5555), grava <code>persist.adb.tcp.port</code> quando há root e já conecta. O persist sobrevive ao reboot; sem root a porta cai no próximo boot.`,
+          tags: [{ label: "USB", cls: "tag-blue" }, { label: "root opcional", cls: "tag-amber" }],
+        },
+      ],
+    },
+    {
+      id: "conexao",
+      icon: "⇄",
+      title: "Conexão ADB",
+      summary: "Pareamento sem fio e sessões ADB por IP, nome ou porta.",
+      commands: [
+        {
+          syntax: `pair ${ARG("ip:porta")} ${ARG("código")}`,
+          example: "pair 192.168.1.50:37123 123456",
+          desc: `Pareia a Depuração sem fio do Android 11+ com a porta e o código de 6 dígitos mostrados na TV (<em>Opções do desenvolvedor → Depuração sem fio → Parear dispositivo</em>). A porta de pareamento é diferente da porta de conexão e muda a cada pareamento.`,
+          tags: [{ label: "Android 11+" }],
+        },
+        {
+          syntax: `connect ${ARG("ip-ou-nome[:porta]")}`,
+          example: "connect 192.168.1.50:5555",
+          desc: "Conecta por ADB. Porta padrão 5555 para Android 10 ou menor; no Android 11+ use a porta de conexão exibida na tela de Depuração sem fio.",
+          tags: [{ label: "sessão" }],
+        },
+        {
+          syntax: `disconnect ${ARG("ip-ou-nome[:porta]")}`,
+          example: "disconnect 192.168.1.50:5555",
+          desc: "Desconecta uma sessão ADB sem desligar nada no aparelho.",
+          tags: [{ label: "sessão" }],
+        },
+      ],
+    },
+    {
+      id: "apps",
+      icon: "▤",
+      title: "Apps",
+      summary: "Listar, instalar, remover e analisar aplicativos — com limpeza automática do ícone no launcher.",
+      note: `
+        <div class="cmd-note">
+          <b>Ícone travado?</b> Em launchers com tiles fixos o ícone não sai junto com o
+          pacote. Depois de um <code>uninstall</code> bem-sucedido, o programa verifica o
+          launcher e esconde o ícone automaticamente. O controle manual fica no tópico
+          <a href="#launcher">Launcher e ícones</a>.
+        </div>
+        <div class="cmd-note">
+          <b>Painel visual:</b> a página <a href="/functions.html">Funções</a> executa apps,
+          install, uninstall, launcher, screen e push com campos prontos e histórico de
+          execuções no estilo de log.
+        </div>`,
+      commands: [
+        {
+          syntax: `apps ${ARG("alvo")}`,
+          example: "apps 192.168.1.28",
+          desc: "Lista os pacotes de usuário e de sistema instalados na box, em duas seções.",
+          tags: [{ label: "ADB" }],
+        },
+        {
+          syntax: `analyze ${ARG("alvo")}`,
+          example: "analyze 192.168.1.28",
+          desc: `Classifica os pacotes de sistema em <b>pode remover</b> (testes de fábrica, protetores de tela, impressão, galeria, câmera), <b>revisar</b> (Google, telefonia, Chrome) e <b>manter</b> (boot, configurações, launcher, áudio, arquivos, OTA e ADB). Detecta o navegador padrão e sugere o comando de remoção e de reversão.`,
+          tags: [{ label: "diagnóstico", cls: "tag-blue" }, { label: "somente leitura", cls: "tag-green" }],
+        },
+        {
+          syntax: `install ${ARG("alvo")} ${ARG("apk")}`,
+          example: 'install 192.168.1.28 "C:\\apps\\app.apk"',
+          desc: `Instala ou atualiza um APK do PC no aparelho. Na página <a href="/functions.html">Funções</a> o mesmo fluxo existe em <em>Instalar ou atualizar APK</em>, sem digitar caminho.`,
+          tags: [{ label: "ADB" }, { label: "upload direto", cls: "tag-blue" }],
+        },
+        {
+          syntax: `uninstall ${ARG("alvo")} ${ARG("pacote")} confirmar`,
+          example: "uninstall 192.168.1.28 com.exemplo.app confirmar",
+          desc: `Remove um app pelo pacote. Sem <code>confirmar</code> o comando apenas pede confirmação. Apps de sistema podem exigir <code>pm uninstall --user 0</code>, que o servidor tenta em seguida. Ao final, em launcher com tiles fixos, o ícone do app removido é escondido junto com qualquer outro tile órfão.`,
+          tags: [{ label: "confirmação", cls: "tag-amber" }, { label: "limpa o ícone", cls: "tag-green" }],
+        },
+      ],
+    },
+    {
+      id: "launcher",
+      icon: "▦",
+      title: "Launcher e ícones",
+      summary: "Inspecionar os tiles da HOME, esconder ícones de apps que não existem mais e desfazer tudo.",
+      note: `
+        <div class="cmd-note">
+          <b>Por que o ícone fica?</b> Em launchers de fabricante (como o HLauncher da
+          Transpeed) os tiles da tela inicial são fixos no layout, não vêm da lista de
+          pacotes: remover o app pelo <code>pm uninstall</code> deixa o tile morto na
+          tela. O programa aplica um overlay de recursos (RRO) que esconde esses tiles sem
+          alterar o APK do launcher.
+        </div>
+        <div class="cmd-note">
+          <b>Compatibilidade:</b> no Android 10 o overlay só aplica se estiver
+          pré-instalado em <code>/system</code> ou assinado com o mesmo certificado do
+          launcher. O HLauncher usa a testkey pública do AOSP, então o programa assina o
+          overlay com ela. Em launcher dinâmico (Samsung, Android TV padrão) nada disso é
+          necessário: o ícone sai sozinho com o pacote.
+        </div>`,
+      commands: [
+        {
+          syntax: `launcher ${ARG("alvo")}`,
+          example: "launcher 192.168.1.28",
+          desc: `Mostra o app HOME, o perfil de tiles detectado, cada tile com <b>✓</b> (pacote instalado) ou <b>✗</b> (órfão) e o estado do overlay. Rodar sem ação é o mesmo que <code>launcher &lt;alvo&gt; info</code>.`,
+          tags: [{ label: "diagnóstico", cls: "tag-blue" }],
+        },
+        {
+          syntax: `launcher ${ARG("alvo")} clean`,
+          example: "launcher 192.168.1.28 clean",
+          desc: "Esconde todos os tiles cujo pacote não existe mais na box. Usa o overlay de recursos: o APK do launcher não é alterado e a HOME é reiniciada para aplicar.",
+          tags: [{ label: "RRO", cls: "tag-green" }, { label: "sem root", cls: "tag-green" }],
+        },
+        {
+          syntax: `launcher ${ARG("alvo")} hide ${ARG("pacote")}`,
+          example: "launcher 192.168.1.28 hide com.google.android.youtube.tv",
+          desc: "Esconde o tile de um pacote específico, mesmo que o app esteja instalado. Útil para tirar atalhos que não são usados sem desinstalar nada.",
+          tags: [{ label: "reversível", cls: "tag-green" }],
+        },
+        {
+          syntax: `launcher ${ARG("alvo")} show ${ARG("pacote")}`,
+          example: "launcher 192.168.1.28 show com.google.android.youtube.tv",
+          desc: "Volta a mostrar um tile escondido. Recusa se o pacote não está instalado, para não deixar um ícone morto na tela.",
+          tags: [{ label: "reversível", cls: "tag-green" }],
+        },
+        {
+          syntax: `launcher ${ARG("alvo")} rollback`,
+          example: "launcher 192.168.1.28 rollback",
+          desc: "Desabilita e remove o overlay, restaurando o layout original do launcher na hora.",
+          tags: [{ label: "desfaz tudo", cls: "tag-amber" }],
+        },
+      ],
+    },
+    {
+      id: "midia",
+      icon: "▷",
+      title: "Tela e arquivos",
+      summary: "Capturar a tela e mover arquivos entre o PC e a box.",
+      commands: [
+        {
+          syntax: `screen ${ARG("alvo")}`,
+          example: "screen 192.168.1.28",
+          desc: "Captura a tela via ADB e mostra a prévia na página <a href=\"/functions.html\">Funções</a>. O PNG fica salvo na pasta <code>captures/</code> do projeto.",
+          tags: [{ label: "ADB" }],
+        },
+        {
+          syntax: `push ${ARG("alvo")} ${ARG("arquivo")} ${LIT("[destino]")}`,
+          example: 'push 192.168.1.28 "C:\\video.mp4" /sdcard/Download/',
+          desc: "Copia um arquivo do PC para a box. Sem destino, usa <code>/sdcard/Download</code>.",
+          tags: [{ label: "ADB" }],
+        },
+      ],
+    },
+    {
+      id: "sistema",
+      icon: "⚙",
+      title: "Sistema",
+      summary: "Reiniciar o aparelho e controlar o próprio terminal.",
+      commands: [
+        {
+          syntax: `reboot ${ARG("alvo")} confirmar`,
+          example: "reboot 192.168.1.28 confirmar",
+          desc: "Reinicia o aparelho. Exige a palavra <code>confirmar</code>; a sessão ADB cai e volta em alguns segundos.",
+          tags: [{ label: "confirmação", cls: "tag-amber" }],
+        },
+        {
+          syntax: "abort",
+          example: "abort",
+          desc: "Cancela a operação em andamento no servidor (varredura de rede, conexão ADB, coleta de dados). Útil quando o terminal demora mais do que o esperado.",
+          tags: [{ label: "terminal" }],
+        },
+        {
+          syntax: "clear",
+          example: "clear",
+          desc: "Limpa só o que está na tela do terminal. O histórico de comandos e os registros salvos continuam intactos.",
+          tags: [{ label: "terminal" }],
+        },
+        {
+          syntax: "help",
+          example: "help",
+          desc: "Lista os comandos aceitos pelo terminal.",
+          tags: [{ label: "terminal" }],
+        },
+      ],
+    },
+    {
+      id: "caps",
+      icon: "◇",
+      title: "Mapa de capacidades",
+      summary: "Visão por área do que o programa faz hoje e do que está planejado.",
+      caps: true,
+      commands: [],
+    },
+  ];
 
-  <!-- ── Apps e arquivos ── -->
-  <div class="cmd-section">
-    <h2>Apps e arquivos (ADB)</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Sintaxe</th>
-          <th>Descrição</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">apps <span class="arg">&lt;ip|serial&gt;</span></span><br>
-            <span class="cmd-example">apps 192.168.1.12</span>
-          </td>
-          <td class="td-desc">Lista apps de usuário e de sistema instalados na box.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">install <span class="arg">&lt;ip|serial&gt;</span> <span class="arg">&lt;apk&gt;</span></span><br>
-            <span class="cmd-example">install 192.168.1.12 "C:\apps\app.apk"</span>
-          </td>
-          <td class="td-desc">
-            Instala ou atualiza um APK do PC. No painel de Descoberta também dá para escolher o arquivo
-            e enviar direto (botão <em>Instalar APK</em>).
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">uninstall <span class="arg">&lt;ip|serial&gt;</span> <span class="arg">&lt;pacote&gt;</span> confirmar</span><br>
-            <span class="cmd-example">uninstall 192.168.1.12 com.exemplo.app confirmar</span>
-          </td>
-          <td class="td-desc">
-            Remove um app pelo pacote. Sem <code>confirmar</code> o comando apenas pede confirmação.
-            Apps de sistema podem exigir <code>pm uninstall --user 0</code>, que o servidor tenta em seguida.
-          </td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">screen <span class="arg">&lt;ip|serial&gt;</span></span><br>
-            <span class="cmd-example">screen 192.168.1.12</span>
-          </td>
-          <td class="td-desc">Captura a tela e mostra a prévia no painel de Descoberta.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">push <span class="arg">&lt;ip|serial&gt;</span> <span class="arg">&lt;arquivo&gt;</span> [destino]</span><br>
-            <span class="cmd-example">push 192.168.1.12 "C:\video.mp4" /sdcard/Download/</span>
-          </td>
-          <td class="td-desc">Copia um arquivo do PC para a box (padrão <code>/sdcard/Download</code>).</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-        <tr>
-          <td class="td-cmd">
-            <span class="cmd-syntax">reboot <span class="arg">&lt;ip|serial&gt;</span> confirmar</span><br>
-            <span class="cmd-example">reboot 192.168.1.12 confirmar</span>
-          </td>
-          <td class="td-desc">Reinicia a box. A sessão ADB cai e volta em alguns segundos.</td>
-          <td class="td-status"><span class="badge-ok">✓ Ativo</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  const NAV_GROUPS = [
+    { label: "Operação", ids: ["geral", "dispositivo", "conexao", "apps", "launcher", "midia"] },
+    { label: "Referência", ids: ["sistema", "caps"] },
+  ];
 
-  <!-- ── Mapa de capacidades ── -->
-  <div class="cmd-section">
-    <h2>Mapa de capacidades</h2>
-    <div id="capabilities-map" class="caps"><div class="empty">Carregando capacidades…</div></div>
-  </div>
+  const navEl = document.getElementById("cmd-nav");
+  const tabsEl = document.getElementById("cmd-tabs");
+  const contentEl = document.getElementById("cmd-content");
+  const scrollEl = document.getElementById("cmd-scroll");
+  const searchEl = document.getElementById("cmd-filter");
 
-  <div class="note">
-    <b>Como os comandos funcionam:</b> os comandos (<code>list</code>, <code>apps</code>,
-    <code>install</code>, <code>uninstall</code>, <code>screen</code>, <code>push</code>,
-    <code>reboot</code>) rodam no servidor Node.js local via <code>adb</code> e só funcionam se a
-    box expuser a depuração e autorizar a conexão. O terminal não é um shell livre — apenas os
-    comandos listados aqui são aceitos. Em aparelhos ligados por cabo USB, use o serial exibido por
-    <code>adb devices</code> como alvo (ex.: <code>apps RQ8R205WKDW</code>).
-    Para o ADB funcionar em Android 11+ é necessário <code>pair</code> com o código exibido na TV;
-    em Android 10 ou menor, basta <code>connect ip:5555</code> e aceitar o aviso na tela.
-    O <b>Agent com IA</b> é um roadmap: interação em linguagem natural ainda não está disponível.
-  </div>
+  const byId = (id) => TOPICS.find((t) => t.id === id);
+  const countLabel = (n) => (n === 1 ? "1 comando" : `${n} comandos`);
 
-</main>
+  function buildNav() {
+    for (const group of NAV_GROUPS) {
+      const wrap = document.createElement("div");
+      wrap.className = "nav-group";
+      const label = document.createElement("div");
+      label.className = "nav-label";
+      label.textContent = group.label;
+      wrap.append(label);
+      for (const id of group.ids) {
+        const topic = byId(id);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "nav-item";
+        button.dataset.topic = id;
+        button.innerHTML =
+          `<span class="ico">${topic.icon}</span><span>${topic.title}</span>` +
+          (topic.commands.length ? `<span class="n">${topic.commands.length}</span>` : "");
+        button.addEventListener("click", () => select(id));
+        wrap.append(button);
+      }
+      navEl.append(wrap);
+    }
+  }
+
+  function buildTabs() {
+    for (const topic of TOPICS) {
+      const tab = document.createElement("button");
+      tab.type = "button";
+      tab.className = "cmd-tab";
+      tab.dataset.topic = topic.id;
+      tab.innerHTML =
+        `<span>${topic.icon}</span><span>${topic.title}</span>` +
+        (topic.commands.length ? `<span class="n">${topic.commands.length}</span>` : "");
+      tab.addEventListener("click", () => select(topic.id));
+      tabsEl.append(tab);
+    }
+  }
+
+  function syncNav(id) {
+    for (const el of document.querySelectorAll(".nav-item, .cmd-tab")) {
+      if (el.dataset.topic === id) el.setAttribute("aria-current", "page");
+      else el.removeAttribute("aria-current");
+    }
+  }
+
+  function card(cmd) {
+    const tags = (cmd.tags || [])
+      .map((t) => `<span class="tag-pill ${t.cls || ""}">${t.label}</span>`)
+      .join("");
+    return `<article class="cmd-card">
+      <div class="card-top">
+        <code class="cmd-sig">${cmd.syntax}</code>
+        <span class="badge-ok">ativo</span>
+      </div>
+      <p class="cmd-desc">${cmd.desc}</p>
+      ${cmd.example ? `<code class="cmd-example">${cmd.example}</code>` : ""}
+      ${tags ? `<div class="cmd-tags">${tags}</div>` : ""}
+    </article>`;
+  }
+
+  function header(topic, countOverride) {
+    const count = countOverride ?? topic.commands.length;
+    return `<header class="cmd-head">
+      <span class="ico">${topic.icon}</span>
+      <div><h2>${topic.title}</h2><p>${topic.summary}</p></div>
+      ${count ? `<span class="pill">${countLabel(count)}</span>` : ""}
+    </header>`;
+  }
+
+  function loadCapabilities() {
+    const el = document.querySelector("#capabilities-map");
+    if (el && window.AN && window.AN.loadCapabilities) window.AN.loadCapabilities(el);
+  }
+
+  function renderTopic(topic) {
+    const body = topic.caps
+      ? `<div id="capabilities-map" class="caps-topic"><div class="empty">Carregando capacidades…</div></div>`
+      : (topic.intro || "") +
+        (topic.commands.length ? `<div class="cmd-list">${topic.commands.map(card).join("")}</div>` : "") +
+        (topic.note || "");
+    contentEl.innerHTML = header(topic) + body;
+    scrollEl.scrollTop = 0;
+    if (topic.caps) loadCapabilities();
+  }
+
+  function topicMatches(topic, needle) {
+    return topic.title.toLowerCase().includes(needle) || topic.summary.toLowerCase().includes(needle);
+  }
+
+  function commandMatches(cmd, needle) {
+    return `${cmd.syntax} ${cmd.desc} ${cmd.example || ""}`.toLowerCase().includes(needle);
+  }
+
+  function renderSearch(query) {
+    const needle = query.trim().toLowerCase();
+    const groups = TOPICS.filter((t) => !t.caps)
+      .map((topic) => ({
+        topic,
+        hits: topicMatches(topic, needle)
+          ? topic.commands
+          : topic.commands.filter((c) => commandMatches(c, needle)),
+      }))
+      .filter((g) => g.hits.length > 0);
+
+    syncNav(null);
+    if (!groups.length) {
+      contentEl.innerHTML = `<div class="search-empty">Nenhum comando corresponde a <b>“${query.trim()}”</b>.<br>Tente “launcher”, “adb”, “apk” ou limpe o filtro.</div>`;
+    } else {
+      const total = groups.reduce((sum, g) => sum + g.hits.length, 0);
+      contentEl.innerHTML =
+        `<header class="cmd-head">
+          <span class="ico">⌕</span>
+          <div><h2>Resultados</h2><p>Comandos que combinam com “${query.trim()}”.</p></div>
+          <span class="pill">${countLabel(total)}</span>
+        </header>` +
+        groups
+          .map(
+            (g) =>
+              `<section class="search-group"><h3>${g.topic.title}</h3><div class="cmd-list">${g.hits.map(card).join("")}</div></section>`,
+          )
+          .join("");
+    }
+    scrollEl.scrollTop = 0;
+  }
+
+  let current = null;
+
+  function select(id, { updateUrl = true } = {}) {
+    const topic = byId(id) || TOPICS[0];
+    current = topic;
+    searchEl.value = "";
+    if (updateUrl && location.hash !== `#${topic.id}`) history.pushState(null, "", `#${topic.id}`);
+    syncNav(topic.id);
+    renderTopic(topic);
+  }
+
+  buildNav();
+  buildTabs();
+
+  searchEl.addEventListener("input", () => {
+    const query = searchEl.value;
+    if (query.trim()) renderSearch(query);
+    else select(current ? current.id : "geral", { updateUrl: false });
+  });
+
+  searchEl.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      searchEl.value = "";
+      select(current ? current.id : "geral", { updateUrl: false });
+    }
+  });
+
+  window.addEventListener("popstate", () => {
+    select(location.hash.replace(/^#/, "") || "geral", { updateUrl: false });
+  });
+
+  window.addEventListener("hashchange", () => {
+    const id = location.hash.replace(/^#/, "") || "geral";
+    if (!current || current.id !== id) select(id, { updateUrl: false });
+  });
+
+  select(location.hash.replace(/^#/, "") || "geral", { updateUrl: false });
+})();
+</script>
 <script src="/js/capabilities.js"></script>
 </body>
 </html>
