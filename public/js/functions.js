@@ -122,6 +122,69 @@
       build: (v) => `apps ${v.target}`,
     },
     {
+      id: "play",
+      group: "Apps",
+      label: "Certificação do Play Store",
+      desc: "Mostra GSF ID, status da certificação e versões, explica a recusa e força um novo check-in para o Google reavaliar.",
+      fields: [
+        TARGET,
+        {
+          key: "mode",
+          label: "Ação",
+          type: "select",
+          default: "info",
+          options: [
+            { value: "info", label: "Diagnosticar certificação" },
+            { value: "recheck", label: "Recheck (forçar check-in)" },
+            { value: "recheck-clear", label: "Recheck + limpar dados da Play Store" },
+          ],
+        },
+      ],
+      build: (v) =>
+        v.mode === "recheck"
+          ? `play ${v.target} recheck`
+          : v.mode === "recheck-clear"
+            ? `play ${v.target} recheck limpar`
+            : `play ${v.target}`,
+    },
+    {
+      id: "firmware-scan",
+      group: "Sistema",
+      label: "Procurar firmware na internet",
+      desc: "Lê o hardware pela box, procura ROMs compatíveis na internet e mostra se a fonte é oficial ou de terceiros. Não baixa nem instala.",
+      fields: [
+        TARGET,
+        {
+          key: "limit",
+          label: "Quantos resultados",
+          type: "text",
+          default: "3",
+          placeholder: "1 a 10",
+          hint: "1 mostra só o melhor candidato",
+        },
+      ],
+      build: (v) => `scan firmware ${v.target}${v.limit ? ` ${v.limit}` : ""}`,
+    },
+    {
+      id: "firmware",
+      group: "Sistema",
+      label: "Atualizar firmware (ROM)",
+      desc: "Analisa a ROM da pasta roms/ e executa a rota do formato: OTA .zip abre o Local Update na TV; imagem .img gera o kit PhoenixCard/PhoenixSuit. O backup das partições críticas é feito antes.",
+      fields: [
+        TARGET,
+        {
+          key: "rom",
+          label: "ROM da pasta roms/",
+          type: "text",
+          placeholder: "1, Transpeed_H616_20220219_0930.img ou update.zip",
+          hint: "Use update firmware list para ver o formato detectado",
+          required: true,
+        },
+        { key: "confirm", label: "Confirmo o backup e a execução da rota", type: "checkbox" },
+      ],
+      build: (v) => `update firmware ${v.target} ${v.rom}${v.confirm ? " confirmar" : ""}`,
+    },
+    {
       id: "install",
       group: "Apps",
       label: "Instalar ou atualizar APK",
@@ -224,8 +287,10 @@
   const state = {
     target: new URLSearchParams(location.search).get("target") || localStorage.getItem(LS_TARGET) || "",
     action: "info",
+    mode: "info",
     port: "5555",
     package: "",
+    rom: "",
     destination: "",
     code: "",
     full: false,
@@ -247,6 +312,7 @@
 
   function resetState() {
     state.action = "info";
+    state.mode = "info";
     state.port = "5555";
     state.package = "";
     state.destination = "";

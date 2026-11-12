@@ -382,8 +382,8 @@
         </div>
         <div class="cmd-note">
           <b>Painel visual:</b> a página <a href="/functions.html">Funções</a> executa apps,
-          install, uninstall, launcher, screen e push com campos prontos e histórico de
-          execuções no estilo de log.
+          play, install, uninstall, launcher, screen e push com campos prontos e histórico
+          de execuções no estilo de log.
         </div>`,
       commands: [
         {
@@ -466,6 +466,106 @@
       ],
     },
     {
+      id: "play",
+      icon: "✓",
+      title: "Play Store e certificação",
+      summary: "Ler o status de certificação do Google Play, explicar a recusa e forçar um novo check-in.",
+      note: `
+        <div class="cmd-note">
+          <b>O veredito é do Google.</b> A certificação é decidida no servidor, por
+          GSF ID + fingerprint do build. Nenhum comando local muda o status: o caminho
+          é registrar o GSF ID em
+          <a href="https://www.google.com/android/uncertified">google.com/android/uncertified</a>
+          e rodar <code>recheck</code> depois.
+        </div>
+        <div class="cmd-note">
+          <b>O GSF ID muda.</b> Resetar a box ou limpar os dados do Google Play services
+          troca o ID e exige registrar o aparelho de novo. O limite é de 100 IDs por conta
+          Google.
+        </div>
+        <div class="cmd-note">
+          <b>Qual ID registrar?</b> O <code>android_id</code> da tabela <code>main</code> do
+          <code>gservices.db</code> — o mesmo exibido pelo <code>play</code>. Não use o
+          <code>Settings.Secure.ANDROID_ID</code> (SSAID).
+        </div>`,
+      commands: [
+        {
+          syntax: `play ${ARG("alvo")}`,
+          example: "play 192.168.1.28",
+          desc: `Mostra GSF ID, conta Google, horário do check-in, <code>uncertified_status</code>, data de reavaliação, versões do Play/Play services/GSF, relógio, rede e avisos sobre o fingerprint do build. Somente leitura.`,
+          tags: [{ label: "diagnóstico", cls: "tag-blue" }, { label: "somente leitura", cls: "tag-green" }],
+        },
+        {
+          syntax: `play ${ARG("alvo")} recheck ${LIT("[limpar]")}`,
+          example: "play 192.168.1.28 recheck",
+          desc: `Para a Play Store, envia o broadcast de check-in ao Google Play services (precisa de root) e abre a Play Store na TV. Com <code>limpar</code>, apaga os dados da Play Store antes (a conta Google permanece). Depois consulta o status por até 30 s.`,
+          tags: [{ label: "força check-in", cls: "tag-amber" }, { label: "abre a loja" }],
+        },
+      ],
+    },
+    {
+      id: "firmware",
+      icon: "⤓",
+      title: "Firmware e ROM",
+      summary: "Procurar ROM na internet, validar a placa e executar a rota certa para o formato.",
+      note: `
+        <div class="cmd-note">
+          <b>Busca na internet:</b> <code>scan firmware</code> lê o hardware pela box (não o
+          fingerprint falso) e procura ROMs para esse modelo. A classificação
+          <b>oficial x terceiro</b> usa o domínio de origem: fabricante/OEM, blog, fórum ou
+          espelho de arquivo. Isso não verifica assinatura criptográfica — só o
+          <code>update firmware</code> confere o arquivo baixado.
+        </div>
+        <div class="cmd-note">
+          <b>Pasta:</b> coloque as ROMs em <code>roms/</code> na raiz do projeto. São aceitos
+          <code>.img</code>, pacote OTA <code>.zip</code> e arquivos <code>.zip</code> ou
+          <code>.rar</code> que tenham um <code>.img</code> dentro — nesse caso o programa lê a
+          imagem direto do arquivo, <b>sem extrair</b>. Para <code>.rar</code> ele usa o UnRAR do
+          WinRAR ou o 7-Zip (variável <code>TX_UNRAR</code>). A ROM tem de ser do Transpeed H616
+          (SoC <code>sun50iw9p1</code>): uma ROM de H6 (<code>sun50iw6</code>) é bloqueada.
+        </div>
+        <div class="cmd-note">
+          <b>Instalação:</b> o pacote OTA <code>.zip</code> assinado é enviado com conferência de
+          SHA-256, aberto no <b>Local Update</b> e a instalação começa sozinha quando a
+          verificação do fabricante passa. Imagem completa <code>.img</code> não é aceita pelo
+          Local Update e não é gravável por ADB: o comando faz backup, grava o
+          <code>flash-kit.txt</code> e termina com <b>NADA FOI INSTALADO</b> — ele não finge
+          sucesso nem se limita a imprimir um tutorial.
+        </div>
+        <div class="cmd-note">
+          <b>Certificação:</b> a ROM de terceiro troca o GSF ID e não garante aprovação do
+          Google. Depois do boot, rode <code>play</code> para comparar o fingerprint e
+          registre o novo ID em
+          <a href="https://www.google.com/android/uncertified">google.com/android/uncertified</a>.
+        </div>`,
+      commands: [
+        {
+          syntax: `scan firmware ${ARG("alvo")} ${LIT("[limite]")}`,
+          example: "scan firmware 192.168.1.28 1",
+          desc: `Lê modelo, placa, SoC, Android, build, identidade e certificação (<code>list</code> + <code>play</code>), busca ROMs na internet e ranqueia por placa, data e download. Abre o link de download e lê os nomes reais dos arquivos: se a página anuncia H616 mas os arquivos são de outra linha (ex.: <code>Transpeed_6K</code> de 2020, H6), o candidato é rebaixado e a seção vira <b>“Nenhuma ROM confirmada”</b>. Mostra se a fonte é <b>oficial</b> (fabricante/OEM) ou <b>de terceiros</b> (blog, fórum, MEGA/Drive). O <code>limite</code> padrão é 3; <code>1</code> mostra só o melhor. Não baixa nem instala.`,
+          tags: [{ label: "diagnóstico", cls: "tag-blue" }, { label: "somente leitura", cls: "tag-green" }],
+        },
+        {
+          syntax: `update firmware ${LIT("list")}`,
+          example: "update firmware list",
+          desc: "Lista as ROMs da pasta com tamanho, data, formato detectado (OTA, imagem completa, cartão) e, para <code>.zip</code>/<code>.rar</code>, o <code>.img</code> encontrado dentro. Nada é extraído para o disco.",
+          tags: [{ label: "diagnóstico", cls: "tag-blue" }],
+        },
+        {
+          syntax: `update firmware ${ARG("alvo")} ${LIT("[rom]")}`,
+          example: "update firmware 192.168.1.28 1",
+          desc: `Mostra o estado da box e, com a ROM escolhida, analisa formato, SoC, identidade (<code>google/sailfish</code> ou Transpeed), SHA-256, assinatura/aparelho da OTA, espaço e o plano. O conteúdo da imagem manda mais que o nome: um arquivo chamado H616 com imagem H6 é bloqueado. Se a ROM for <code>.zip</code>/<code>.rar</code>, analisa o <code>.img</code> de dentro em streaming, sem extrair. Para imagem completa, avisa que o comando não instala e devolve falha, não sucesso. Não altera nada.`,
+          tags: [{ label: "somente leitura", cls: "tag-green" }],
+        },
+        {
+          syntax: `update firmware ${ARG("alvo")} ${ARG("rom")} ${LIT("confirmar")}`,
+          example: "update firmware 192.168.1.28 Transpeed_H616_20220219 confirmar",
+          desc: `Faz backup das partições críticas em <code>backups/</code> e executa a rota do formato: OTA segue ao Local Update com SHA-256 conferido e a instalação é iniciada sem toque na TV quando a verificação passa; imagem completa gera o kit físico e termina com <b>NADA FOI INSTALADO</b>, sem reportar sucesso. Informa o resultado de cada etapa.`,
+          tags: [{ label: "confirmação", cls: "tag-amber" }, { label: "backup", cls: "tag-blue" }],
+        },
+      ],
+    },
+    {
       id: "midia",
       icon: "▷",
       title: "Tela e arquivos",
@@ -489,8 +589,14 @@
       id: "sistema",
       icon: "⚙",
       title: "Sistema",
-      summary: "Reiniciar o aparelho e controlar o próprio terminal.",
+      summary: "Atualizar o firmware pela internet do fabricante, reiniciar o aparelho e controlar o próprio terminal.",
       commands: [
+        {
+          syntax: `update ota ${ARG("alvo")} ${LIT("[confirmar]")}`,
+          example: "update ota 192.168.1.28",
+          desc: "Força a checagem de atualização online do próprio firmware (serviço <code>com.softwinner.update</code> via root). Se houver pacote e vier <code>confirmar</code>, baixa e instala. Quando o canal do fabricante está fora do ar (DNS morto ou porta fechada), diz exatamente por que não há atualização — sem fingir que checou.",
+          tags: [{ label: "firmware" }],
+        },
         {
           syntax: `reboot ${ARG("alvo")} confirmar`,
           example: "reboot 192.168.1.28 confirmar",
@@ -528,7 +634,7 @@
   ];
 
   const NAV_GROUPS = [
-    { label: "Operação", ids: ["geral", "dispositivo", "conexao", "apps", "launcher", "midia"] },
+    { label: "Operação", ids: ["geral", "dispositivo", "conexao", "apps", "launcher", "play", "midia"] },
     { label: "Referência", ids: ["sistema", "caps"] },
   ];
 

@@ -12,6 +12,10 @@ import { KIND_LABEL } from "../discovery/types.js";
 import { adbConnect, parseAdbDevices, resolveEndpoint, run, validEndpoint } from "./client.js";
 import { inspectUsb } from "./usb.js";
 import { analyzePackages } from "./analyze.js";
+import { playReport, recheckCertification } from "./play.js";
+import { firmwareInstall, firmwarePlan, firmwareStatus, formatRomList } from "../firmware/update.js";
+import { forceOtaUpdate } from "../firmware/ota.js";
+import { scanFirmware } from "../firmware/scan.js";
 import {
   captureScreen,
   ensureDevice,
@@ -40,6 +44,20 @@ function helpText(): string {
     "  list <ip-ou-serial>      identifica e coleta dados via ADB",
     "  apps <alvo>              lista apps de usuário e de sistema",
     "  analyze <alvo>           classifica o que dá para remover sem quebrar a box",
+    "  play <alvo> [recheck [limpar]]",
+    "                           certificação do Play e check-in forçado",
+    "  update ota <alvo> [confirmar]",
+    "                           força a checagem de atualização online do fabricante",
+    "                           (com.softwinner.update via root) e aplica se houver;",
+    "                           relata o motivo quando o canal oficial está fora do ar",
+    "  update firmware [list|<alvo> [rom] [confirmar]]",
+    "                           ROMs da pasta roms/ (.img, OTA .zip ou .zip/.rar",
+    "                           com a imagem dentro, lida sem extrair); OTA instala",
+    "                           sozinho pelo Local Update; imagem completa não é",
+    "                           instalável por ADB e termina com NADA FOI INSTALADO",
+    "  scan firmware <alvo> [limite]",
+    "                           lê a box (play/list), busca ROMs na internet e",
+    "                           classifica oficial x terceiro",
     "  install <alvo> <apk>     instala/atualiza um APK do PC",
     "  uninstall <alvo> <pacote> confirmar",
     "                           remove um app",
@@ -283,6 +301,109 @@ router.post("/api/command", async (req, res) => {
     }
     try {
       res.json({ ok: true, output: await analyzePackages(device) });
+    } catch (e) {
+      res.json({ ok: false, output: (e as Error).message });
+    }
+    return;
+  }
+
+  const otaMatch = raw.match(/^update\s+ota(?:\s+(\S+))?(?:\s+(confirmar|--yes))?$/i);
+  if (otaMatch) {
+    const target = otaMatch[1] ? cleanArg(otaMatch[1]) : "";
+    if (!target) {
+      res.json({ ok: false, output: "Use update ota <alvo> [confirmar]. Ex.: update ota 192.168.1.28" });
+      return;
+    }
+    const confirmed = Boolean(otaMatch[2]);
+    logStep(`update ota ${target}${confirmed ? " confirmar" : ""}…`);
+    const device = await ensureDevice(target);
+    if ("error" in device) {
+      res.json({ ok: false, output: device.error });
+      return;
+    }
+    try {
+      res.json(await forceOtaUpdate(device, confirmed));
+    } catch (e) {
+      res.json({ ok: false, output: (e as Error).message });
+    }
+    return;
+  }
+
+  const fwMatch = raw.match(/^update\s+firmware(?:\s+(.*))?$/i);
+  if (fwMatch) {
+    const args = splitArgs(fwMatch[1] ?? "");
+    if (args.length === 0 || /^list$/i.test(args[0])) {
+      logStep("update firmware list");
+      try {
+        res.json({ ok: true, output: await formatRomList() });
+      } catch (e) {
+        res.json({ ok: false, output: (e as Error).message });
+      }
+      return;
+    }
+    const target = cleanArg(args[0]);
+    const confirmed = args.slice(1).some((a) => /^(confirmar|--yes)$/i.test(a));
+    const romQuery = args
+      .slice(1)
+      .filter((a) => !/^(confirmar|--yes)$/i.test(a))
+      .join(" ")
+      .trim();
+    logStep(`update firmware ${target}${romQuery ? ` ${romQuery}` : ""}${confirmed ? " confirmar" : ""}…`);
+    const device = await ensureDevice(target);
+    if ("error" in device) {
+      res.json({ ok: false, output: device.error });
+      return;
+    }
+    try {
+      if (!romQuery) {
+        res.json({ ok: true, output: await firmwareStatus(device) });
+        return;
+      }
+      res.json(confirmed ? await firmwareInstall(device, romQuery, true) : await firmwarePlan(device, romQuery));
+    } catch (e) {
+      res.json({ ok: false, output: (e as Error).message });
+    }
+    return;
+  }
+
+  const scanFwMatch = raw.match(/^scan\s+firmware(?:\s+(\S+))?(?:\s+(\d{1,2}))?$/i);
+  if (scanFwMatch) {
+    const target = scanFwMatch[1] ? cleanArg(scanFwMatch[1]) : "";
+    if (!target) {
+      res.json({ ok: false, output: "Use scan firmware <alvo> [limite]. Ex.: scan firmware 192.168.1.28 1" });
+      return;
+    }
+    const limit = Math.min(10, Math.max(1, Number(scanFwMatch[2] ?? 3) || 3));
+    logStep(`scan firmware ${target}${scanFwMatch[2] ? ` ${limit}` : ""}…`);
+    const device = await ensureDevice(target);
+    if ("error" in device) {
+      res.json({ ok: false, output: device.error });
+      return;
+    }
+    try {
+      res.json(await scanFirmware(device, limit));
+    } catch (e) {
+      res.json({ ok: false, output: (e as Error).message });
+    }
+    return;
+  }
+
+  const playMatch = raw.match(/^play\s+(\S+)(?:\s+(recheck)(?:\s+(limpar))?)?$/i);
+  if (playMatch) {
+    const target = cleanArg(playMatch[1]);
+    const recheck = Boolean(playMatch[2]);
+    const clear = Boolean(playMatch[3]);
+    logStep(`play ${target}${recheck ? ` recheck${clear ? " limpar" : ""}` : ""}…`);
+    const device = await ensureDevice(target);
+    if ("error" in device) {
+      res.json({ ok: false, output: device.error });
+      return;
+    }
+    try {
+      res.json({
+        ok: true,
+        output: recheck ? await recheckCertification(device, clear) : await playReport(device),
+      });
     } catch (e) {
       res.json({ ok: false, output: (e as Error).message });
     }

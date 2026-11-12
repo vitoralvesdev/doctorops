@@ -94,6 +94,46 @@ export function getCapabilities() {
           endpoints: ["POST /api/command"],
         },
         {
+          id: "adb-play",
+          title: "Certificação do Play Store",
+          description:
+            "Lê o GSF ID, o veredito e a data de emissão, as versões do Play e a identidade do firmware (autor, compilação, patch e fingerprints por partição), explica a recusa e força um novo check-in para o Google reavaliar.",
+          commands: ["play <alvo>", "play <alvo> recheck [limpar]"],
+          entry: "/functions.html",
+          endpoints: ["POST /api/command"],
+        },
+        {
+          id: "adb-firmware",
+          title: "Atualização de firmware",
+          description:
+            "Encontra a ROM na pasta roms/, confere formato, SoC, placa, identidade, assinatura e espaço (o conteúdo manda mais que o nome do arquivo), faz backup de bootloader/boot/recovery/vbmeta via root e escolhe a rota: OTA .zip assinado segue ao Local Update com SHA-256 conferido e a instalação é iniciada automaticamente após a verificação do fabricante; imagem completa .img/.rar ou .zip com .img não é instalável por ADB, então o comando gera o flash-kit.txt, termina com NADA FOI INSTALADO e não finge sucesso. Aceita .zip/.rar contendo a imagem: o .img é lido em streaming, sem extrair para o disco.",
+          commands: [
+            "update firmware",
+            "update firmware <alvo> [rom]",
+            "update firmware <alvo> <rom> confirmar",
+          ],
+          entry: "/functions.html",
+          endpoints: ["POST /api/command"],
+        },
+        {
+          id: "adb-firmware-ota",
+          title: "Atualização online do firmware",
+          description:
+            "Força a checagem de atualização online do fabricante (serviço OtaService do com.softwinner.update via root) no próprio aparelho e, com confirmar, baixa e aplica o pacote oferecido. Relata o motivo exato quando o canal oficial está fora do ar: domínios mortos (NXDOMAIN), porta recusada ou política de cleartext do Android 10 — sem fingir que atualizou.",
+          commands: ["update ota <alvo> [confirmar]"],
+          entry: "/functions.html",
+          endpoints: ["POST /api/command"],
+        },
+        {
+          id: "adb-firmware-scan",
+          title: "Buscar firmware na internet",
+          description:
+            "Lê o hardware pela box (modelo, placa, SoC, Android, build, identidade e certificação, como em list e play), procura ROMs para esse aparelho na internet, ranqueia por compatibilidade e data e mostra se a fonte é o fabricante ou um terceiro (blog, fórum, espelho). Lê também os nomes dos arquivos no link de download e trata como não confirmado o candidato cuja página anuncia uma placa mas o arquivo é de outra linha. Não baixa nem instala nada.",
+          commands: ["scan firmware <alvo> [limite]"],
+          entry: "/functions.html",
+          endpoints: ["POST /api/command"],
+        },
+        {
           id: "adb-functions",
           title: "Funções guiadas",
           description:

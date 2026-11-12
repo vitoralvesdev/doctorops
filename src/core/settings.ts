@@ -10,3 +10,5 @@ export const DATA_DIR = path.resolve(here, "../..");
 export const PUBLIC_DIR = path.join(DATA_DIR, "public");
 export const CAPTURES_DIR = path.join(DATA_DIR, "captures");
 export const TMP_DIR = path.join(DATA_DIR, "tmp");
+export const ROMS_DIR = process.env.TX_ROMS_DIR?.trim() || path.join(DATA_DIR, "roms");
+export const BACKUPS_DIR = process.env.TX_BACKUPS_DIR?.trim() || path.join(DATA_DIR, "backups");

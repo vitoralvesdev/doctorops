@@ -6,5 +6,7 @@ known-hosts
 *.DS_Store
 coverage/
 captures/
+roms/
+backups/
 docs/*
 !docs/images/
