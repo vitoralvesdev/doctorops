@@ -164,8 +164,8 @@ Para alterar o código e rodar a partir da fonte (não é necessário para usar 
 - para o módulo ADB local, Android SDK Platform Tools com `adb` no `PATH`.
 
 ```bash
-git clone https://github.com/vitoralvesdev/android-network.git
-cd android-network
+git clone https://github.com/vitoralvesdev/doctorops.git
+cd doctorops
 npm install
 npm run dev
 ```
