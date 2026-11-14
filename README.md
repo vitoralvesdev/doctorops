@@ -757,6 +757,8 @@ Se a firmware bloquear as opções de desenvolvedor, pode ser necessário utiliz
 
 Contribuições, testes em diferentes modelos de TV Box e relatos de compatibilidade são bem-vindos.
 
+O branch `main` é protegido: alterações entram apenas por Pull Request, com revisão aprovada. Push direto, force push e exclusão do branch são bloqueados.
+
 Para contribuir:
 
 1. Faça um fork do repositório.
