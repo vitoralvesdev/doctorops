@@ -1,13 +1,19 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { isIPv4, lookupHost } from "../core/network.js";
+import { ADB_BIN } from "../core/settings.js";
 import { delay } from "../core/time.js";
 
 const execFileAsync = promisify(execFile);
 
+// Todos os módulos chamam run("adb", ...); aqui o nome vira o binário embutido no pacote.
+function binary(cmd: string): string {
+  return cmd === "adb" ? ADB_BIN : cmd;
+}
+
 export async function run(cmd: string, args: string[], timeout = 8000): Promise<string> {
   try {
-    const { stdout, stderr } = await execFileAsync(cmd, args, {
+    const { stdout, stderr } = await execFileAsync(binary(cmd), args, {
       timeout,
       windowsHide: true,
       maxBuffer: 1024 * 1024,
@@ -15,7 +21,7 @@ export async function run(cmd: string, args: string[], timeout = 8000): Promise<
     return `${stdout ?? ""}${stderr ?? ""}`.trim();
   } catch (err) {
     const e = err as Error & { stdout?: string; stderr?: string; code?: string | number };
-    if (e.code === "ENOENT") throw new Error("ADB não encontrado. Instale Android SDK Platform Tools e adicione ao PATH.");
+    if (e.code === "ENOENT") throw new Error(`ADB não encontrado (${ADB_BIN}). Reinstale o aplicativo ou instale Android SDK Platform Tools.`);
     const out = `${e.stdout ?? ""}${e.stderr ?? ""}`.trim();
     if (out) return out;
     throw new Error(e.message || "Falha ao executar comando.");
@@ -24,7 +30,7 @@ export async function run(cmd: string, args: string[], timeout = 8000): Promise<
 
 export async function runBuffer(cmd: string, args: string[], timeout = 15000): Promise<Buffer> {
   try {
-    const { stdout } = await execFileAsync(cmd, args, {
+    const { stdout } = await execFileAsync(binary(cmd), args, {
       timeout,
       windowsHide: true,
       encoding: "buffer",
@@ -33,7 +39,7 @@ export async function runBuffer(cmd: string, args: string[], timeout = 15000): P
     return Buffer.isBuffer(stdout) ? stdout : Buffer.from(stdout ?? "");
   } catch (err) {
     const e = err as Error & { code?: string | number; stdout?: Buffer };
-    if (e.code === "ENOENT") throw new Error("ADB não encontrado. Instale Android SDK Platform Tools e adicione ao PATH.");
+    if (e.code === "ENOENT") throw new Error(`ADB não encontrado (${ADB_BIN}). Reinstale o aplicativo ou instale Android SDK Platform Tools.`);
     throw new Error(e.message || "Falha ao executar comando.");
   }
 }

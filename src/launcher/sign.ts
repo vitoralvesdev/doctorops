@@ -149,11 +149,11 @@ export function signApk(apk: Buffer): Buffer {
   }
 
   const manifest = Buffer.from(
-    `Manifest-Version: 1.0\r\nCreated-By: Android Network\r\n\r\n${manifestSections.join("")}`,
+    `Manifest-Version: 1.0\r\nCreated-By: DoctorOps\r\n\r\n${manifestSections.join("")}`,
     "utf8",
   );
   const sf = Buffer.from(
-    `Signature-Version: 1.0\r\nCreated-By: Android Network\r\nSHA-256-Digest-Manifest: ${digestBase64(manifest)}\r\n\r\n${sfSections.join("")}`,
+    `Signature-Version: 1.0\r\nCreated-By: DoctorOps\r\nSHA-256-Digest-Manifest: ${digestBase64(manifest)}\r\n\r\n${sfSections.join("")}`,
     "utf8",
   );
   const rsa = buildPkcs7(sf);

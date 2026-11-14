@@ -1,0 +1,52 @@
+name: instaladores
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: build/cache
+          key: tools-${{ hashFiles('packaging/tools.json') }}
+      - run: npm ci
+      - run: choco install innosetup -y --no-progress
+      - run: npm run build:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-setup
+          path: dist-installers/*.exe
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: build/cache
+          key: tools-${{ hashFiles('packaging/tools.json') }}
+      - run: npm ci
+      - run: npm run build:mac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: dist-installers/*.dmg
+          if-no-files-found: error

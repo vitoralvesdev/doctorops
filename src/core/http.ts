@@ -22,7 +22,7 @@ export function httpGet(
     const mod = u.protocol === "https:" ? https : http;
     const req = mod.get(
       u,
-      { timeout: timeoutMs, headers: { "User-Agent": `android-network-adb/${VERSION}`, Accept: "*/*" } },
+      { timeout: timeoutMs, headers: { "User-Agent": `doctorops/${VERSION}`, Accept: "*/*" } },
       (res) => {
         let body = "";
         let bytes = 0;

@@ -1,10 +1,10 @@
-# Android Network
+# DoctorOps
 
 <p align="center">
   **Gerenciamento e manutenção de dispositivos Android TV pela rede local.**
 </p>
 
-O **Android Network** é uma ferramenta desenvolvida em Node.js e TypeScript para localizar, conectar e realizar operações de manutenção em Android TVs e TV Boxes pela rede.
+O **DoctorOps** é uma ferramenta desenvolvida em Node.js e TypeScript para localizar, conectar e realizar operações de manutenção em Android TVs e TV Boxes pela rede.
 
 O modo oficial de conexão é a **descoberta de dispositivos + ADB**. A partir do painel de descoberta é possível identificar aparelhos e abrir um terminal ADB. A página **Funções** transforma as tarefas de manutenção em um formulário guiado — listar e analisar apps, conferir a certificação do Play, instalar ou remover APKs, controlar ícones do launcher, capturar a tela, transferir arquivos e reiniciar — com o resultado em um histórico visual de execuções.
 
@@ -26,8 +26,9 @@ Abaixo estão algumas capturas reais do painel, mostrando a descoberta de dispos
 
 - [Visão geral](#visão-geral)
 - [Funcionalidades](#funcionalidades)
-- [Requisitos](#requisitos)
 - [Instalação](#instalação)
+- [Gerar os instaladores](#gerar-os-instaladores)
+- [Desenvolvimento](#desenvolvimento)
 - [Executando o projeto](#executando-o-projeto)
 - [Conectando um dispositivo com ADB](#conectando-um-dispositivo-com-adb)
 - [Comandos disponíveis no ADB](#comandos-disponíveis-no-adb)
@@ -46,13 +47,13 @@ Abaixo estão algumas capturas reais do painel, mostrando a descoberta de dispos
 
 ## Visão geral
 
-A ideia do Android Network é centralizar operações de manutenção de dispositivos Android TV em um painel acessível pelo computador, sem precisar executar manualmente cada tarefa no terminal.
+A ideia do DoctorOps é centralizar operações de manutenção de dispositivos Android TV em um painel acessível pelo computador, sem precisar executar manualmente cada tarefa no terminal.
 
-| Módulo             | Objetivo                                                       | Situação                    |
-| ------------------ | -------------------------------------------------------------- | --------------------------- |
-| Descoberta de rede | Localizar e identificar dispositivos na LAN                    | Implementado — modo oficial |
-| ADB                | Executar operações de manutenção nos dispositivos              | Funcional                   |
-| Agent com IA       | Permitir interação inteligente e comandos em linguagem natural | Planejado                   |
+| Módulo             | Objetivo                                                       | Situação  |
+| ------------------ | -------------------------------------------------------------- | --------- |
+| Descoberta de rede | Localizar e identificar dispositivos na LAN                    | Funcional |
+| ADB                | Executar operações de manutenção nos dispositivos              | Funcional |
+| Agent com IA       | Permitir interação inteligente e comandos em linguagem natural | Planejado |
 
 A página inicial redireciona para `/discovery`, que é o ponto de entrada do modo oficial de conexão.
 
@@ -97,54 +98,85 @@ O módulo ADB permite executar operações diretamente em dispositivos Android a
 
 ---
 
-## Requisitos
+## Instalação
 
-Antes de começar, tenha instalado:
+A forma oficial de usar o DoctorOps é pelo instalador do seu sistema. Não é preciso ter Node.js, npm ou Platform Tools: o runtime e o `adb` vão embutidos.
 
-- **Node.js 20 ou superior**
-- **npm**, normalmente instalado junto com o Node.js
+| Ambiente | Arquivo                              | Como instalar                   |
+| -------- | ------------------------------------ | ------------------------------- |
+| Windows  | `DoctorOps-<versão>-setup.exe`       | execute o instalador            |
+| macOS    | `DoctorOps-<versão>-universal.dmg`   | abra e arraste para Applications |
 
-Para utilizar o módulo ADB:
+Só a depuração ADB precisa estar habilitada no dispositivo e autorizada na primeira conexão.
 
-- Android SDK Platform Tools.
-- Executável `adb` disponível no `PATH` do sistema.
-- Depuração ADB habilitada e autorização concedida no dispositivo.
+### Windows
+
+1. Execute `DoctorOps-<versão>-setup.exe`.
+2. A instalação é por usuário, em `%LOCALAPPDATA%\Programs\DoctorOps`, e não pede administrador.
+3. Abra pelo atalho do Menu Iniciar ou da área de trabalho. O navegador abre sozinho em `http://localhost:3000`.
+4. Se o Windows SmartScreen avisar sobre editor desconhecido, use **Mais informações > Executar assim mesmo**.
+5. Na primeira execução, permita o acesso no firewall para redes privadas (necessário para a box alcançar o painel).
+
+Os dados ficam em `%LOCALAPPDATA%\DoctorOps` (ROMs, backups, capturas, `scan-config.json`, `known-hosts.json`) e continuam lá após atualizar ou desinstalar. O atalho **Pasta de dados** no Menu Iniciar abre essa pasta.
+
+### macOS
+
+1. Abra `DoctorOps-<versão>-universal.dmg` e arraste o app para **Applications**.
+2. O `.dmg` é universal (Apple Silicon e Intel) e leva o Node das duas arquiteturas; o launcher escolhe na hora.
+3. Como o app não é notarizado, no primeiro uso use **clique-direito > Abrir** (ou **Ajustes do Sistema > Privacidade e Segurança > Abrir mesmo assim**).
+4. Na primeira execução o macOS pode pedir para permitir conexões de entrada para o Node; permita para a box acessar o painel.
+5. O navegador abre sozinho em `http://localhost:3000`. O servidor roda numa janela do Terminal, que mostra os logs: feche a janela ou use `Ctrl+C` para parar.
+
+Os dados ficam em `~/Library/Application Support/DoctorOps` (`roms/`, `backups/`, `captures/`), e os logs aparecem na janela do Terminal.
 
 ---
 
-## Instalação
+## Gerar os instaladores
 
-### 1. Clone o repositório
+Ferramentas baixadas e verificadas no build (versões fixas em `packaging/tools.json`):
+
+| Ferramenta     | Versão  |
+| -------------- | ------- |
+| Node.js        | 24.22.3 |
+| Platform Tools | 37.0.3  |
+
+```bash
+npm ci
+
+# Windows -> dist-installers/DoctorOps-<versão>-setup.exe
+npm run build:win
+
+# macOS -> dist-installers/DoctorOps-<versão>-universal.dmg
+npm run build:mac
+```
+
+O build do Windows precisa do [Inno Setup](https://jrsoftware.org/isdl.php) (`winget install -e --id JRSoftware.InnoSetup`). O `.dmg` só é gerado no macOS. O workflow `.github/workflows/build-installers.yml` monta os dois artefatos no GitHub Actions (Windows e macOS runners) e pode ser disparado manualmente.
+
+Para trocar Node ou Platform Tools, edite `packaging/tools.json` (incluindo os checksums) e rode `npm run tools` para baixar novamente.
+
+---
+
+## Desenvolvimento
+
+Para alterar o código e rodar a partir da fonte (não é necessário para usar o programa):
+
+- Node.js 20 ou superior e npm;
+- para o módulo ADB local, Android SDK Platform Tools com `adb` no `PATH`.
 
 ```bash
 git clone https://github.com/vitoralvesdev/android-network.git
-```
-
-### 2. Entre na pasta
-
-```bash
 cd android-network
-```
-
-### 3. Instale as dependências
-
-```bash
 npm install
-```
-
-### 4. Inicie o servidor em desenvolvimento
-
-```bash
 npm run dev
 ```
 
-O painel será disponibilizado localmente na porta `3000`.
+O servidor de desenvolvimento fica em `http://localhost:3000`.
 
 ---
 
 ## Executando o projeto
 
-Depois de iniciar o servidor, acesse pelo navegador:
+Depois de instalar (ou iniciar o servidor em desenvolvimento), o DoctorOps abre o navegador sozinho. As páginas também podem ser acessadas manualmente:
 
 | Página              | Endereço                              | Descrição                               |
 | ------------------- | ------------------------------------- | --------------------------------------- |
@@ -157,7 +189,7 @@ Depois de iniciar o servidor, acesse pelo navegador:
 
 Por padrão, o servidor escuta em `0.0.0.0:3000`, permitindo que as páginas sejam abertas por outros dispositivos da rede. A API, porém, continua restrita a requisições locais (veja [Rede e segurança](#rede-e-segurança)).
 
-Para executar somente no próprio computador:
+Para executar somente no próprio computador, no modo desenvolvimento:
 
 ```bash
 HOST=127.0.0.1 npm run dev
@@ -341,7 +373,7 @@ O alvo pode ser um endereço IP, um endereço com porta ou o serial USB exibido 
 
 ### Dispositivos validados
 
-Catálogo dos aparelhos testados com o Android Network. A homologação é feita em etapas, da mais básica para a mais invasiva:
+Catálogo dos aparelhos testados com o DoctorOps. A homologação é feita em etapas, da mais básica para a mais invasiva:
 
 | Etapa | O que valida                                                |
 | ----- | ----------------------------------------------------------- |
@@ -446,13 +478,13 @@ update firmware 192.168.1.28 1 confirmar # executa a rota do formato
 
 ### Formatos e rotas
 
-| Formato | Como é detectado | Rota |
-| --- | --- | --- |
-| `.zip` OTA | `META-INF/com/google/android/update-binary`, `updater-script` ou `payload.bin` | **Local Update** (`com.softwinner.update`), automático |
-| `.zip`/`.rar` com `.img` | o arquivo contém uma imagem `.img`; ela é lida em streaming | mesma rota do `.img` de dentro |
-| `.img` IMAGEWTY | cabeçalho Allwinner no início do arquivo | **não instalável por ADB**; kit físico (PhoenixCard/PhoenixSuit) |
-| `.img` RFSFAT16 | imagem de cartão Allwinner | **não instalável por ADB**; PhoenixCard (SD) |
-| outro | não reconhecido | bloqueado |
+| Formato                  | Como é detectado                                                               | Rota                                                             |
+| ------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `.zip` OTA               | `META-INF/com/google/android/update-binary`, `updater-script` ou `payload.bin` | **Local Update** (`com.softwinner.update`), automático           |
+| `.zip`/`.rar` com `.img` | o arquivo contém uma imagem `.img`; ela é lida em streaming                    | mesma rota do `.img` de dentro                                   |
+| `.img` IMAGEWTY          | cabeçalho Allwinner no início do arquivo                                       | **não instalável por ADB**; kit físico (PhoenixCard/PhoenixSuit) |
+| `.img` RFSFAT16          | imagem de cartão Allwinner                                                     | **não instalável por ADB**; PhoenixCard (SD)                     |
+| outro                    | não reconhecido                                                                | bloqueado                                                        |
 
 Por que a imagem completa não usa o Local Update: o verificador do fabricante chama `android.os.RecoverySystem.verifyPackage`, que só aceita pacote OTA `.zip` com assinatura. Um `.img` não é ZIP; a tela mostra **Package verify failed** mesmo quando a ROM é a correta para a placa. O ADB desta box também não expõe fastboot nem escrita de eMMC, então não existe rota automática para imagem completa: o comando não envia o `.img` e **não retorna sucesso** — ele prepara o kit físico e diz isso diretamente.
 

@@ -1,0 +1,14 @@
+{
+  "node": "24.22.3",
+  "platformTools": {
+    "version": "37.0.3",
+    "win": {
+      "url": "https://dl.google.com/android/repository/platform-tools_r37.0.3-win.zip",
+      "sha1": "b3fde5239ad89229d5a9178375b81c9887a24172"
+    },
+    "darwin": {
+      "url": "https://dl.google.com/android/repository/platform-tools_r37.0.3-darwin.zip",
+      "sha1": "eca4effbe35f4968139b051bbb16753302a3c33c"
+    }
+  }
+}
