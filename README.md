@@ -33,7 +33,7 @@ Abaixo estão algumas capturas reais do painel, mostrando a descoberta de dispos
 - [Conectando um dispositivo com ADB](#conectando-um-dispositivo-com-adb)
 - [Comandos disponíveis no ADB](#comandos-disponíveis-no-adb)
 - [Certificação do Play Store](#certificação-do-play-store)
-- [Atualização de firmware (ROM)](#atualização-de-firmware-rom)
+- [Atualização de firmware (ROM) — em desenvolvimento](#atualização-de-firmware-rom)
 - [Buscar firmware na internet](#buscar-firmware-na-internet)
 - [Descoberta de dispositivos](#descoberta-de-dispositivos)
 - [Agent com IA — planejado](#agent-com-ia--planejado)
@@ -86,7 +86,7 @@ O módulo ADB permite executar operações diretamente em dispositivos Android a
 - Analisar quais pacotes de sistema podem ser removidos sem afetar boot, configuração e gerenciamento.
 - Conferir o status de certificação do Play Store e forçar um novo check-in com o Google.
 - Procurar ROMs na internet a partir do hardware real da box, classificar a fonte como oficial ou de terceiros e recomendar a melhor, sem baixar nem instalar.
-- Localizar e validar uma ROM na pasta `roms/` (`.img`, OTA `.zip` ou `.zip`/`.rar` com a imagem dentro, lida sem extrair) e executar a rota real: OTA pelo Local Update com início automático da instalação; imagem completa não é instalável por ADB e o comando termina com "NADA FOI INSTALADO", com backup das partições críticas e conferência de SHA-256.
+- Localizar e validar uma ROM na pasta `roms/` (`.img`, OTA `.zip` ou `.zip`/`.rar` com a imagem dentro, lida sem extrair) e executar a rota real: OTA pelo Local Update com início automático da instalação; imagem completa não é instalável por ADB e o comando termina com "NADA FOI INSTALADO", com backup das partições críticas e conferência de SHA-256. A instalação automática de ROM ainda está em desenvolvimento.
 - Instalar e atualizar arquivos APK.
 - Desinstalar aplicativos, com limpeza automática do ícone no launcher.
 - Esconder, mostrar e restaurar ícones de launchers com tiles fixos.
@@ -467,6 +467,8 @@ O GSF ID muda se a box for resetada ou se os dados do Google Play services forem
 
 ## Atualização de firmware (ROM)
 
+> **Status: em desenvolvimento.** A instalação de ROM ainda não funciona 100% pelo programa. A validação do arquivo, o backup das partições e a conferência de SHA-256 estão operacionais; a instalação automática depende do formato, do fabricante e do aparelho e pode não concluir. Quando a rota automática não é possível, a gravação física (cartão SD ou ferramenta do fabricante) continua sendo o caminho.
+
 O comando procura a ROM na pasta `roms/` e escolhe a rota conforme o **formato** do arquivo. Ele não finge uma instalação que o aparelho não aceita: pacote OTA `.zip` assinado segue pelo Local Update oficial e a instalação é iniciada automaticamente; imagem completa `.img` **não é instalável por ADB** — o comando faz o backup, gera o kit de gravação e termina com **NADA FOI INSTALADO**, sem reportar sucesso. Se a ROM vier dentro de um `.zip` ou `.rar`, o programa lê a imagem diretamente do arquivo, sem extrair nada para o disco.
 
 ```bash
@@ -476,17 +478,27 @@ update firmware 192.168.1.28 1           # analisa a ROM nº 1 (não altera nada
 update firmware 192.168.1.28 1 confirmar # executa a rota do formato
 ```
 
+### Aparelho homologado
+
+O modelo de referência das rotas de firmware é o **Transpeed 6K Ultra (H616, SoC `sun50iw9p1`)** — o mesmo aparelho homologado nas etapas de ADB (veja [Dispositivos validados](#dispositivos-validados)). O fluxo abaixo é genérico: a conferência e a rota são escolhidas pelo hardware lido do aparelho e pelo formato do arquivo, não pelo nome do modelo.
+
+| Validação de firmware    | Situação          |
+| ------------------------ | ----------------- |
+| Leitura e classificação  | Funcional         |
+| Backup e SHA-256         | Funcional         |
+| Instalação pelo programa | Em desenvolvimento |
+
 ### Formatos e rotas
 
 | Formato                  | Como é detectado                                                               | Rota                                                             |
 | ------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| `.zip` OTA               | `META-INF/com/google/android/update-binary`, `updater-script` ou `payload.bin` | **Local Update** (`com.softwinner.update`), automático           |
+| `.zip` OTA               | `META-INF/com/google/android/update-binary`, `updater-script` ou `payload.bin` | **Local Update** do fabricante, automático (quando disponível)   |
 | `.zip`/`.rar` com `.img` | o arquivo contém uma imagem `.img`; ela é lida em streaming                    | mesma rota do `.img` de dentro                                   |
 | `.img` IMAGEWTY          | cabeçalho Allwinner no início do arquivo                                       | **não instalável por ADB**; kit físico (PhoenixCard/PhoenixSuit) |
 | `.img` RFSFAT16          | imagem de cartão Allwinner                                                     | **não instalável por ADB**; PhoenixCard (SD)                     |
 | outro                    | não reconhecido                                                                | bloqueado                                                        |
 
-Por que a imagem completa não usa o Local Update: o verificador do fabricante chama `android.os.RecoverySystem.verifyPackage`, que só aceita pacote OTA `.zip` com assinatura. Um `.img` não é ZIP; a tela mostra **Package verify failed** mesmo quando a ROM é a correta para a placa. O ADB desta box também não expõe fastboot nem escrita de eMMC, então não existe rota automática para imagem completa: o comando não envia o `.img` e **não retorna sucesso** — ele prepara o kit físico e diz isso diretamente.
+Por que a imagem completa não usa o Local Update: o verificador do fabricante chama `android.os.RecoverySystem.verifyPackage`, que só aceita pacote OTA `.zip` com assinatura. Um `.img` não é ZIP; a tela mostra **Package verify failed** mesmo quando a ROM é a correta para a placa. Quando o ADB do aparelho não expõe fastboot nem escrita de eMMC, não existe rota automática para imagem completa: o comando não envia o `.img` e **não retorna sucesso** — ele prepara o kit físico e diz isso diretamente.
 
 ### Pasta de ROMs
 
@@ -498,12 +510,12 @@ Coloque as ROMs em `roms/` (criada na primeira execução e fora do Git). São a
 
 Para `.rar` o programa usa o `UnRAR.exe` do WinRAR ou o `7z.exe` do 7-Zip; se estiverem em outro lugar, defina `TX_UNRAR` ou `TX_7Z`. Na hora da gravação física, PhoenixCard e PhoenixSuit exigem o `.img` solto: extraia com WinRAR/7-Zip e, se o antivírus apagar o arquivo, libere a pasta de extração. O `.rar` original continua servindo como fonte. Para usar outra pasta de ROMs, defina `TX_ROMS_DIR`.
 
-A ROM precisa ser da **mesma placa**: Transpeed H616, SoC `sun50iw9p1`. Uma ROM `Transpeed 6K H6` é de outro SoC (`sun50iw6`) e é bloqueada. O **conteúdo manda mais que o nome**: um arquivo chamado `H616` cuja imagem contém `sun50iw6`/`H6` é bloqueado, e o relatório diz explicitamente que o nome não torna a imagem compatível. A conferência combina cabeçalho Allwinner (`IMAGEWTY`/`RFSFAT16`), strings da imagem (`sun50iw9`, `H616`, `Transpeed_H616`, `ro.fota.version`), tamanho contra o eMMC e, no caso de OTA, a assinatura e o aparelho exigido pelo `updater-script`; o nome do arquivo só entra como pista quando o conteúdo não identifica o SoC.
+A ROM precisa ser da **mesma placa e SoC do aparelho** — no aparelho homologado, Transpeed H616 (`sun50iw9p1`). Uma imagem de outra linha de SoC é bloqueada. O **conteúdo manda mais que o nome**: um arquivo chamado `H616` cuja imagem contém o SoC de outra placa é bloqueado, e o relatório diz explicitamente que o nome não torna a imagem compatível. A conferência combina o cabeçalho da imagem (`IMAGEWTY`/`RFSFAT16`), strings internas (SoC, modelo, versão FOTA), tamanho contra o eMMC e, no caso de OTA, a assinatura e o aparelho exigido pelo `updater-script`; o nome do arquivo só entra como pista quando o conteúdo não identifica o SoC.
 
 ### O que o comando garante
 
 - **Restaurar firmware compatível com a placa**: valida SoC, modelo, eMMC e espaço livre antes de executar qualquer rota.
-- **Remover a identidade do Pixel**: detecta `google/sailfish` na imagem e avisa que essa ROM mantém o fingerprint falso; aponta quando a imagem usa a identidade `Transpeed_H616` original.
+- **Detectar identidade falsa**: avisa quando a imagem mantém o fingerprint de outra linha (por exemplo, `google/sailfish`) e aponta quando a imagem usa a identidade original do aparelho.
 - **Recuperar os componentes do sistema**: mostra os arquivos embutidos (`bootloader.fex`, `boot.fex`, `recovery.fex`, `system.fex`, `vendor.fex` etc.).
 - **Corrigir propriedades e configurações**: compara a build atual com a da ROM (versão FOTA, data, autor) e, depois do boot, o `play` confirma a identidade efetiva.
 - **Identidade legítima do hardware**: mostra o fingerprint da ROM e da box lado a lado.
@@ -519,6 +531,7 @@ Sem `confirmar`, o comando é somente leitura: analisa a ROM (inclusive SHA-256)
 2. Abre o **Local Update** e lê a verificação do fabricante via UI Automator.
 3. Se o pacote for aceito, toca em **Start install** sozinho (ou detecta o reboot automático) e confirma que a instalação começou.
 4. Só retorna sucesso quando a box realmente sai do ADB para aplicar o pacote. Se a tela ficar parada ou aparecer **Package verify failed**, retorna falha e diz que nada foi instalado.
+5. Esta etapa ainda está em desenvolvimento: a conclusão automática pode variar conforme o aparelho e a versão do Local Update.
 
 **Imagem completa `.img`:**
 
@@ -536,7 +549,7 @@ O backup não inclui `super`/dados do usuário. Ele serve para conferência e pa
 
 ## Atualização online do firmware (`update ota`)
 
-Força o próprio aparelho a checar no servidor do fabricante se existe atualização, usando o serviço de atualização embutido (`com.softwinner.update` → `OtaService`). O serviço só pode ser iniciado pelo app do fabricante (uid 1000), então o comando usa root (`su 0`).
+Força o próprio aparelho a checar no servidor do fabricante se existe atualização, usando o serviço de atualização embutido na firmware (no Allwinner, `com.softwinner.update` → `OtaService`). O serviço só pode ser iniciado pelo app do fabricante (uid 1000), então o comando usa root (`su 0`).
 
 ```bash
 update ota 192.168.1.28              # força a checagem e relata o resultado
@@ -559,6 +572,8 @@ Nos três casos a resposta termina com **NENHUMA ATUALIZAÇÃO DISPONÍVEL** e `
 
 O `scan firmware` descobre qual é o hardware real da box e procura ROMs para esse modelo na internet. Ele não usa o fingerprint global (`google/sailfish`) como identidade: modelo, placa e SoC vêm das propriedades de fábrica (`ro.product.*`, `ro.boot.hardware`, `ro.fota.*`), como no `list` e no `play`.
 
+> A busca é genérica: monta as consultas com o modelo e o SoC lidos do aparelho. O primeiro aparelho homologado é o **Transpeed 6K Ultra (H616)** — veja [Dispositivos validados](#dispositivos-validados).
+
 ```bash
 scan firmware 192.168.1.28       # mostra os 3 melhores candidatos
 scan firmware 192.168.1.28 1     # mostra só o melhor
@@ -567,21 +582,21 @@ scan firmware 192.168.1.28 10    # até 10 candidatos
 
 ### O que o comando lê da box
 
-- Modelo, fabricante, marca, `device`, placa, SoC (`sun50iw9p1`), Android/SDK.
+- Modelo, fabricante, marca, `device`, placa, SoC, Android/SDK.
 - Build, FOTA, data de compilação, autor, fingerprint global e fingerprints por partição.
 - Desvios de identidade detectados pelo `play` (fingerprint de Pixel, `userdebug`, `test-keys`, SELinux permissive).
 - Root, Local Update, eMMC, memória e uptime (dados do `list`).
 - Status da certificação, GSF ID e data do veredito.
-- Canal oficial declarado em `ro.product.otaupdateurl` (no Transpeed, `http://ota.szhxws.com/Update`) e o OEM (`ro.fota.oem`).
+- Canal oficial declarado em `ro.product.otaupdateurl` (quando a firmware informa) e o OEM (`ro.fota.oem`).
 
 ### Como a busca funciona
 
-1. Monta consultas com o modelo e o SoC, por exemplo `Transpeed H616 Android 10 firmware download`, e uma segunda consulta com o domínio do OEM.
+1. Monta consultas com o modelo e o SoC lidos do aparelho, por exemplo `<modelo> <SoC> Android <versão> firmware download`, e uma segunda consulta com o domínio do OEM.
 2. Usa a busca HTML do DuckDuckGo, sem chave de API. Se o provedor limitar as consultas diretas (HTTP 202), lê a mesma busca pelo leitor `r.jina.ai`; se ainda assim não vier nada, tenta o Bing. O relatório informa qual caminho foi usado.
 3. Lê as páginas dos candidatos e extrai nome de arquivo, data, Android, SoC, links de download (MEGA, Google Drive, MediaFire, Yandex) e a data de publicação.
-4. Abre o link de download (pasta do Yandex, Drive, MediaFire etc.) e lê os nomes reais dos arquivos. É assim que o scan percebe quando a página anuncia uma placa, mas o link aponta para outra linha: o caso conhecido é “Transpeed 6K H616” cujos arquivos são todos `Transpeed_6K_*` de 2020, build H6 (`sun50iw6p1`).
-5. Descarta placas incompatíveis: página que aponta H6 (`sun50iw6`) não entra na recomendação. H616/H618 (`sun50iw9`) é compatível, mas se os arquivos do link forem de outra linha (ex.: `Transpeed_6K` sem H616 no nome), o candidato é rebaixado para “não confirmado” e o scan não o apresenta como a melhor ROM.
-6. Ranqueia por placa, modelo Transpeed citado, Android igual ao da box, presença de arquivo/link, data declarada e origem oficial.
+4. Abre o link de download (pasta do Yandex, Drive, MediaFire etc.) e lê os nomes reais dos arquivos. É assim que o scan percebe quando a página anuncia uma placa, mas o link aponta para outra linha de SoC — o nome do arquivo no link não bate com o modelo anunciado.
+5. Descarta SoCs incompatíveis: página que aponta outro SoC não entra na recomendação. Se os arquivos do link forem de outra linha, o candidato é rebaixado para “não confirmado” e o scan não o apresenta como a melhor ROM.
+6. Ranqueia por placa, modelo citado, Android igual ao da box, presença de arquivo/link, data declarada e origem oficial.
 7. Quando a data do título é ambígua (`08-10-2020`: 8 de outubro ou 10 de agosto), ela é exibida com o aviso e não é usada para afirmar que a ROM é mais antiga ou mais nova que a build instalada.
 8. Só chama de “Melhor ROM encontrada” quando a placa está confirmada; caso contrário a seção vira “Nenhuma ROM confirmada” e o resultado é tratado como pista. Candidato sem link de download utilizável não entra na recomendação.
 
@@ -589,7 +604,7 @@ scan firmware 192.168.1.28 10    # até 10 candidatos
 
 A classificação é feita pela **origem do resultado**, não por uma assinatura:
 
-- **OFICIAL**: domínio do fabricante/OEM (`szhxws.com`, `transpeed`, `allwinner`, `softwinner`).
+- **OFICIAL**: domínio do fabricante/OEM (por exemplo, o domínio do canal de atualização declarado pelo próprio aparelho).
 - **TERCEIRO**: blog, fórum ou espelho de arquivo (XDA, 4PDA, AndroidPC.tv, China Gadgets Reviews, MEGA, Google Drive, MediaFire etc.). O arquivo pode ser o original da fábrica, mas a distribuição não é do fabricante.
 - **INDETERMINADO**: origem não reconhecida.
 
@@ -599,7 +614,7 @@ A classificação é feita pela **origem do resultado**, não por uma assinatura
 
 - A fonte oficial pode estar fora do ar ou bloquear acesso fora da rede da box. Nesse caso o relatório mostra o canal declarado e orienta o suporte do OEM.
 - Uma página pode anunciar uma versão mais nova do que a build instalada sem realmente hospedar o arquivo; o ranking reduz a nota de páginas sem link direto e marca a data como "não declarada" quando ela não aparece.
-- A placa só é confirmada quando o nome do arquivo no link diz H616/H618; páginas sem nome de arquivo ficam como "não confirmadas". O veredito final é sempre o do `update firmware`, que lê o SoC de dentro do arquivo.
+- A placa só é confirmada quando o nome do arquivo no link diz o SoC esperado; páginas sem nome de arquivo ficam como "não confirmadas". O veredito final é sempre o do `update firmware`, que lê o SoC de dentro do arquivo.
 - O resultado depende do que está indexado no DuckDuckGo. Se todos os caminhos de busca falharem, o relatório imprime uma consulta manual pronta.
 - A consulta via `r.jina.ai` é um serviço de leitura de terceiros e tem limite de uso anônimo; só o texto da busca (modelo e SoC) sai para esse serviço, nenhum dado da box.
 
@@ -718,6 +733,7 @@ As regras de acesso atuais são:
 - A descoberta depende dos protocolos e serviços disponibilizados pela firmware.
 - Alguns aparelhos não anunciam um nome na rede; MACs privados/aleatórios também impedem identificar o fabricante pelo endereço. Nesses casos, o nome pode estar disponível apenas na lista de clientes DHCP do roteador ou nas configurações do próprio aparelho.
 - O ADB exige autorização no aparelho antes de permitir operações.
+- A instalação de firmware (ROM) pelo programa ainda está em desenvolvimento: análise, backup e kit físico estão funcionais, mas a instalação automática não conclui em todos os casos.
 - Algumas fabricantes bloqueiam ou modificam opções de desenvolvedor e depuração.
 - A API é restrita ao computador que executa o servidor; outros dispositivos da LAN conseguem abrir as páginas, mas não chamar a API.
 - O Agent com IA ainda não está implementado.
